@@ -18,9 +18,9 @@ using namespace DirectX;
 
 // 
 #include "Camera.h"
-#include "GeometryGenerator.h"
 #include "Lighting.h"
 #include "MaterialManager.h"
+#include "MeshManager.h"
 #include "ObjectManager.h"
 #include "Timer.h"
 #include "Utility.h"
@@ -74,16 +74,7 @@ protected:
 
     Camera mCamera;
 
-    GeometryGenerator mGeometryGenerator;
-
-    ComPtr<ID3D11Buffer> mVertexBuffer;
-    ComPtr<ID3D11Buffer> mIndexBuffer;
-    DXGI_FORMAT mIndexBufferFormat = DXGI_FORMAT_R16_UINT;
     ComPtr<ID3D11InputLayout> mInputLayout;
-
-    UINT mIndexStart;
-    UINT mIndexCount;
-    UINT mVertexBase;
 
     D3D11_PRIMITIVE_TOPOLOGY mPrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
@@ -130,6 +121,8 @@ protected:
 
     // materials
     MaterialManager mMaterialManager;
+
+    MeshManager mMeshManager;
 
 private:
 
@@ -181,8 +174,4 @@ private:
     // lights
     Lighting mLighting;
 
-    // objects
-
-    //std::vector<GeometryGenerator::MeshData> mMeshes;
-    GeometryGenerator::MeshData mMesh;
 };

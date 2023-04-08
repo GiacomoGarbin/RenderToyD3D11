@@ -50,95 +50,6 @@ bool AppBase::Init()
 
 	OnResize();
 
-	// mesh
-	{
-		mMesh = GeometryGenerator::CreateBox(1, 1, 1);
-	}
-
-	// vertex buffer
-	{
-		D3D11_BUFFER_DESC desc;
-		desc.ByteWidth = sizeof(GeometryGenerator::VertexData) * UINT(mMesh.vertices.size());
-		desc.Usage = D3D11_USAGE_IMMUTABLE;
-		desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-		desc.CPUAccessFlags = 0;
-		desc.MiscFlags = 0;
-		desc.StructureByteStride = 0;
-
-		D3D11_SUBRESOURCE_DATA data;
-		data.pSysMem = mMesh.vertices.data();
-		data.SysMemPitch = 0;
-		data.SysMemSlicePitch = 0;
-
-		ThrowIfFailed(mDevice->CreateBuffer(&desc, &data, &mVertexBuffer));
-
-		NameResource(mVertexBuffer.Get(), "AppBase_VertexBuffer");
-
-#if 0
-		{
-			desc.Usage = D3D11_USAGE_STAGING;
-			desc.BindFlags = 0;
-			desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-
-			ComPtr<ID3D11Buffer> pStagingBuffer;
-			ThrowIfFailed(mDevice->CreateBuffer(&desc, &data, &pStagingBuffer));
-
-			mContext->CopyResource(pStagingBuffer.Get(), mVertexBuffer.Get());
-
-			D3D11_MAPPED_SUBRESOURCE mapped;
-			mContext->Map(pStagingBuffer.Get(), 0, D3D11_MAP_READ, 0, &mapped);
-
-			OutputDebugStringA("");
-
-			mContext->Unmap(pStagingBuffer.Get(), 0);
-		}
-#endif
-	}
-
-	// index buffer
-	{
-		D3D11_BUFFER_DESC desc;
-		desc.ByteWidth = sizeof(GeometryGenerator::IndexType) * UINT(mMesh.indices.size());
-		desc.Usage = D3D11_USAGE_IMMUTABLE;
-		desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-		desc.CPUAccessFlags = 0;
-		desc.MiscFlags = 0;
-		desc.StructureByteStride = 0;
-
-		D3D11_SUBRESOURCE_DATA data;
-		data.pSysMem = mMesh.indices.data();
-		data.SysMemPitch = 0;
-		data.SysMemSlicePitch = 0;
-
-		ThrowIfFailed(mDevice->CreateBuffer(&desc, &data, &mIndexBuffer));
-		
-		NameResource(mIndexBuffer.Get(), "AppBase_IndexBuffer");
-
-#if 0
-		{
-			desc.Usage = D3D11_USAGE_STAGING;
-			desc.BindFlags = 0;
-			desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-
-			ComPtr<ID3D11Buffer> pStagingBuffer;
-			ThrowIfFailed(mDevice->CreateBuffer(&desc, &data, &pStagingBuffer));
-
-			mContext->CopyResource(pStagingBuffer.Get(), mIndexBuffer.Get());
-
-			D3D11_MAPPED_SUBRESOURCE mapped;
-			mContext->Map(pStagingBuffer.Get(), 0, D3D11_MAP_READ, 0, &mapped);
-
-			OutputDebugStringA("");
-
-			mContext->Unmap(pStagingBuffer.Get(), 0);
-		}
-#endif
-	}
-
-	mIndexStart = 0;
-	mIndexCount = UINT(mMesh.indices.size());
-	mVertexBase = 0;
-
 	// default vertex shader
 	{
 		std::wstring path = L"../RenderToyD3D11/shaders/Default.hlsl";
@@ -201,36 +112,28 @@ bool AppBase::Init()
 		NameResource(mMainPassCB.Get(), "MainPassCB");
 	}
 
+	mMeshManager.Init(mDevice, mContext);
 	mMaterialManager.Init(mDevice, mContext);
-
-	// materials
-	{
-		Material material;
-		material.diffuse = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
-		material.fresnel = XMFLOAT3(0.6f, 0.6f, 0.6f);
-		material.roughness = 0.2f;
-
-		mMaterialManager.AddMaterial("default", material);
-	}
-
 	mObjectManager.Init(mDevice, mContext);
 
-	Object object;
-	//object.mesh;
-	object.material = 0;
+	MeshData mesh = MeshManager::CreateBox(1, 1, 1);
 
+	Material material;
+	material.diffuse = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
+	material.fresnel = XMFLOAT3(0.6f, 0.6f, 0.6f);
+	material.roughness = 0.2f;
+
+	Object object;
+	object.mesh = mMeshManager.AddMesh("box", mesh);
+	object.material = mMaterialManager.AddMaterial("default", material);
 	XMStoreFloat4x4(&object.world, XMMatrixScaling(10, 1, 10) * XMMatrixTranslation(0, -1, 0));
 
 	mObjectManager.AddObject(object);
 
-	for (int x = -1; x <= +1; ++x)
+	for (float x = -1; x <= +1; ++x)
 	{
-		for (int z = -1; z <= +1; ++z)
+		for (float z = -1; z <= +1; ++z)
 		{
-			Object object;
-			//object.mesh;
-			object.material = 0;
-
 			XMStoreFloat4x4(&object.world, XMMatrixTranslation(x * 2, 0, z * 2));
 
 			mObjectManager.AddObject(object);
@@ -885,6 +788,7 @@ void AppBase::Update(const Timer& timer)
 
 	UpdateMainPassCB(timer);
 
+	mMeshManager.UpdateBuffers();
 	mMaterialManager.UpdateBuffer();
 }
 
