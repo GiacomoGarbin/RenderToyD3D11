@@ -21,23 +21,9 @@ using namespace DirectX;
 #include "GeometryGenerator.h"
 #include "Lighting.h"
 #include "MaterialManager.h"
+#include "ObjectManager.h"
 #include "Timer.h"
-
-inline std::wstring AnsiToWString(const std::string& str)
-{
-    WCHAR buffer[512];
-    MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, buffer, 512);
-    return std::wstring(buffer);
-}
-
-#ifndef ThrowIfFailed
-#define ThrowIfFailed(x)                                                      \
-{                                                                             \
-    HRESULT hr__ = (x);                                                       \
-    std::wstring wfn = AnsiToWString(__FILE__);                               \
-    if (FAILED(hr__)) { throw AppBase::Exception(hr__, L#x, wfn, __LINE__); } \
-}
-#endif // ThrowIfFailed
+#include "Utility.h"
 
 class AppBase
 {
@@ -58,39 +44,6 @@ public:
     virtual void Update(const Timer& timer);
     virtual void Draw(const Timer& timer) = 0;
 
-    struct Exception
-    {
-        const HRESULT result;
-        const std::wstring function;
-        const std::wstring file;
-        const int line;
-
-        Exception(HRESULT result,
-                  const std::wstring& function,
-                  const std::wstring& file,
-                  int line)
-            : result(result)
-            , function(function)
-            , file(file)
-            , line(line)
-        {}
-
-        std::wstring ToString() const
-        {
-            const _com_error err(result);
-            const std::wstring msg = err.ErrorMessage();
-
-            std::wostringstream woss;
-            woss << L"code: 0x" << std::hex << result << '\n';
-            woss << L"message:\n" << msg << "\n\n";
-            woss << L"function:\n" << function << "\n\n";
-            woss << L"file: " << file << '\n';
-            woss << L"line: " << std::dec << line << '\n';
-
-            return woss.str();
-        }
-    };
-
 protected:
 
     virtual void OnMouseDown(WPARAM state, int x, int y);
@@ -99,9 +52,6 @@ protected:
     virtual void OnKeyboardEvent(const Timer& timer);
 
     virtual void UpdateMainPassCB(const Timer& timer);
-    virtual void UpdateMaterialsSB(const Timer& timer);
-
-    void NameResource(ID3D11DeviceChild* pDeviceChild, const std::string& name);
 
     enum class ShaderTarget
     {
@@ -173,20 +123,13 @@ protected:
 
     static_assert((sizeof(MainPassCB) % 16) == 0, "constant buffer size must be 16-byte aligned");
 
-    struct ObjectCB
-    {
-        XMFLOAT4X4 world;
-        //XMFLOAT4X4 TexCoordTransform = MathHelper::Identity4x4();
-        UINT material = -1;
-        XMFLOAT3 padding;
-    };
-
-    static_assert((sizeof(ObjectCB) % 16) == 0, "constant buffer size must be 16-byte aligned");
 
     ComPtr<ID3D11Buffer> mMainPassCB;
-    ComPtr<ID3D11Buffer> mObjectCB;
 
-    ComPtr<ID3D11ShaderResourceView> mMaterialsBufferSRV;
+    ObjectManager mObjectManager;
+
+    // materials
+    MaterialManager mMaterialManager;
 
 private:
 
@@ -234,10 +177,6 @@ private:
     // default samplers
     // textures
 
-    // materials
-    MaterialManager mMaterialManager;
-    ComPtr<ID3D11Buffer> mMaterialsSB;
-    bool mIsMaterialsBufferDirty = true;
 
     // lights
     Lighting mLighting;

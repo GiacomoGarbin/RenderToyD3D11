@@ -141,7 +141,7 @@ bool AppBase::Init()
 
 	// default vertex shader
 	{
-		std::wstring path = L"shaders/Default.hlsl";
+		std::wstring path = L"../RenderToyD3D11/shaders/Default.hlsl";
 
 		ComPtr<ID3DBlob> pCode = CompileShader(path, nullptr, "DefaultVS", ShaderTarget::VS);
 
@@ -174,7 +174,7 @@ bool AppBase::Init()
 
 	// default pixel shader
 	{
-		std::wstring path = L"shaders/Default.hlsl";
+		std::wstring path = L"../RenderToyD3D11/shaders/Default.hlsl";
 
 		ComPtr<ID3DBlob> pCode = CompileShader(path, nullptr, "DefaultPS", ShaderTarget::PS);
 
@@ -201,20 +201,7 @@ bool AppBase::Init()
 		NameResource(mMainPassCB.Get(), "MainPassCB");
 	}
 
-	// object CB
-	{
-		D3D11_BUFFER_DESC desc;
-		desc.ByteWidth = sizeof(ObjectCB);
-		desc.Usage = D3D11_USAGE_DEFAULT;
-		desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-		desc.CPUAccessFlags = 0;
-		desc.MiscFlags = 0;
-		desc.StructureByteStride = 0;
-
-		ThrowIfFailed(mDevice->CreateBuffer(&desc, nullptr, &mObjectCB));
-
-		NameResource(mObjectCB.Get(), "ObjectCB");
-	}
+	mMaterialManager.Init(mDevice, mContext);
 
 	// materials
 	{
@@ -226,28 +213,28 @@ bool AppBase::Init()
 		mMaterialManager.AddMaterial("default", material);
 	}
 
-	// materials structured buffer
+	mObjectManager.Init(mDevice, mContext);
+
+	Object object;
+	//object.mesh;
+	object.material = 0;
+
+	XMStoreFloat4x4(&object.world, XMMatrixScaling(10, 1, 10) * XMMatrixTranslation(0, -1, 0));
+
+	mObjectManager.AddObject(object);
+
+	for (int x = -1; x <= +1; ++x)
 	{
-		D3D11_BUFFER_DESC desc;
-		desc.ByteWidth = sizeof(Material) * UINT(mMaterialManager.GetMaterials().size());
-		desc.Usage = D3D11_USAGE_DEFAULT;
-		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-		desc.CPUAccessFlags = 0;
-		desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-		desc.StructureByteStride = sizeof(Material);
+		for (int z = -1; z <= +1; ++z)
+		{
+			Object object;
+			//object.mesh;
+			object.material = 0;
 
-		D3D11_SUBRESOURCE_DATA data;
-		data.pSysMem = mMaterialManager.GetMaterials().data();
-		data.SysMemPitch = 0;
-		data.SysMemSlicePitch = 0;
+			XMStoreFloat4x4(&object.world, XMMatrixTranslation(x * 2, 0, z * 2));
 
-		ThrowIfFailed(mDevice->CreateBuffer(&desc, &data, &mMaterialsSB));
-
-		NameResource(mMaterialsSB.Get(), "MaterialsSB");
-
-		ThrowIfFailed(mDevice->CreateShaderResourceView(mMaterialsSB.Get(), nullptr, &mMaterialsBufferSRV));
-
-		NameResource(mMaterialsBufferSRV.Get(), "MaterialsBufferSRV");
+			mObjectManager.AddObject(object);
+		}
 	}
 
 	return true;
@@ -477,11 +464,6 @@ bool AppBase::InitDirect3D()
 // 		ThrowIfFailed(mDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(mSRVHeap.GetAddressOf())));
 // 	}
 // }
-
-void AppBase::NameResource(ID3D11DeviceChild* pDeviceChild, const std::string& name)
-{
-	ThrowIfFailed(pDeviceChild->SetPrivateData(WKPDID_D3DDebugObjectName, UINT(name.length()), name.data()));
-}
 
 void AppBase::OnResize()
 {
@@ -893,14 +875,6 @@ void AppBase::UpdateMainPassCB(const Timer& timer)
 	mContext->UpdateSubresource(mMainPassCB.Get(), 0, nullptr, &buffer, 0, 0);
 }
 
-void AppBase::UpdateMaterialsSB(const Timer& timer)
-{
-	if (mIsMaterialsBufferDirty)
-	{
-		mIsMaterialsBufferDirty = false;
-	}
-}
-
 void AppBase::Update(const Timer& timer)
 {
 	OnKeyboardEvent(timer);
@@ -910,7 +884,8 @@ void AppBase::Update(const Timer& timer)
 	mLighting.UpdateLights(timer);
 
 	UpdateMainPassCB(timer);
-	UpdateMaterialsSB(timer);
+
+	mMaterialManager.UpdateBuffer();
 }
 
 ComPtr<ID3DBlob> AppBase::CompileShader(const std::wstring& fileName,
