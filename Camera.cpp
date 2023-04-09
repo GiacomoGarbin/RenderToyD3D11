@@ -123,6 +123,8 @@ void Camera::SetLens(const float fovY, const float aspectRatio, const float near
 
 	const XMMATRIX P = XMMatrixPerspectiveFovLH(mFovY, mAspectRatio, mNearZ, mFarZ);
 	XMStoreFloat4x4(&mProj, P);
+	
+	UpdateCache();
 }
 
 void Camera::LookAt(const FXMVECTOR& position, const FXMVECTOR& target, const FXMVECTOR& up)
@@ -265,5 +267,30 @@ void Camera::UpdateViewMatrix()
 		mView(3, 3) = 1.0f;
 
 		mViewDirty = false;
+
+		UpdateCache();
 	}
+}
+
+XMFLOAT4X4 Camera::GetViewProjF() const
+{
+	assert(!mViewDirty);
+	return mViewProj;
+}
+
+XMFLOAT4X4 Camera::GetViewProjInvF() const
+{
+	assert(!mViewDirty);
+	return mViewProjInv;
+}
+
+void Camera::UpdateCache()
+{
+	XMMATRIX view = GetView();
+	XMMATRIX proj = GetProj();
+	XMMATRIX viewProj = view * proj;
+	XMMATRIX viewProjInv = XMMatrixInverse(nullptr, viewProj);
+
+	XMStoreFloat4x4(&mViewProj, viewProj);
+	XMStoreFloat4x4(&mViewProjInv, viewProjInv);
 }

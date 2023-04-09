@@ -113,6 +113,8 @@ protected:
 
     Lighting mLighting;
 
+    ComPtr<ID3D11ShaderResourceView> mDepthBufferSRV;
+
 private:
 
     bool InitWindow();

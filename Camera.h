@@ -6,27 +6,8 @@ using namespace DirectX;
 
 class Camera
 {
-	// camera coordinate system with coordinates relative to world space
-	XMFLOAT3 mPosition = { 0.0f, 0.0f, 0.0f };
-	XMFLOAT3 mRight = { 1.0f, 0.0f, 0.0f };
-	XMFLOAT3 mUp = { 0.0f, 1.0f, 0.0f };
-	XMFLOAT3 mLook = { 0.0f, 0.0f, 1.0f };
-
-	// cache frustum properties
-	float mNearZ = 0.0f;
-	float mFarZ = 0.0f;
-	float mAspectRatio = 0.0f;
-	float mFovY = 0.0f;
-	float mNearWindowHeight = 0.0f;
-	float mFarWindowHeight = 0.0f;
-
-	bool mViewDirty = true;
-
-	// cache view/proj matrices
-	XMFLOAT4X4 mView;
-	XMFLOAT4X4 mProj;
-
 public:
+
 	Camera();
 	~Camera();
 
@@ -66,6 +47,9 @@ public:
 	XMFLOAT4X4 GetViewF() const;
 	XMFLOAT4X4 GetProjF() const;
 
+	XMFLOAT4X4 GetViewProjF() const;
+	XMFLOAT4X4 GetViewProjInvF() const;
+
 	// move the camera
 	void Strafe(const float distance);
 	void Walk(const float distance);
@@ -76,4 +60,31 @@ public:
 
 	// after modifying camera position/orientation, call to rebuild the view matrix
 	void UpdateViewMatrix();
+
+private:
+
+	// camera coordinate system with coordinates relative to world space
+	XMFLOAT3 mPosition = { 0.0f, 0.0f, 0.0f };
+	XMFLOAT3 mRight = { 1.0f, 0.0f, 0.0f };
+	XMFLOAT3 mUp = { 0.0f, 1.0f, 0.0f };
+	XMFLOAT3 mLook = { 0.0f, 0.0f, 1.0f };
+
+	// cache frustum properties
+	float mNearZ = 0.0f;
+	float mFarZ = 0.0f;
+	float mAspectRatio = 0.0f;
+	float mFovY = 0.0f;
+	float mNearWindowHeight = 0.0f;
+	float mFarWindowHeight = 0.0f;
+
+	bool mViewDirty = true;
+
+	// cache view/proj matrices
+	XMFLOAT4X4 mView;
+	XMFLOAT4X4 mProj;
+
+	XMFLOAT4X4 mViewProj;
+	XMFLOAT4X4 mViewProjInv;
+
+	void UpdateCache();
 };

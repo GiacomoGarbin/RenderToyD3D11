@@ -144,6 +144,8 @@ bool AppBase::Init()
 	{
 		for (float z = -1; z <= +1; ++z)
 		{
+			//if (x != 0 || z != 0) continue;
+
 			XMStoreFloat4x4(&object.world, XMMatrixTranslation(x * 2, 0, z * 2));
 
 			mObjectManager.AddObject(object);
@@ -429,7 +431,7 @@ void AppBase::OnResize()
 		desc.SampleDesc.Count = 1;
 		desc.SampleDesc.Quality = 0;
 		desc.Usage = D3D11_USAGE_DEFAULT;
-		desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+		desc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
 		desc.CPUAccessFlags = 0;
 		desc.MiscFlags = 0;
 
@@ -454,6 +456,22 @@ void AppBase::OnResize()
 														  &mDepthStencilBufferDSV));
 
 			NameResource(mDepthStencilBufferDSV.Get(), "DepthStencilBufferDSV");
+		}
+
+		// shader resource view
+		{
+			D3D11_SHADER_RESOURCE_VIEW_DESC desc;
+			desc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+			desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+			desc.Texture2D.MostDetailedMip = 0;
+			desc.Texture2D.MipLevels = 1;
+
+			mDepthBufferSRV.Reset();
+			ThrowIfFailed(mDevice->CreateShaderResourceView(pDepthStencilBuffer.Get(),
+															&desc,
+															&mDepthBufferSRV));
+
+			NameResource(mDepthBufferSRV.Get(), "DepthBufferSVR");
 		}
 	}
 
@@ -769,11 +787,7 @@ void AppBase::UpdateMainPassCB(const Timer& timer)
 {
 	MainPassCB buffer;
 
-	XMMATRIX V = mCamera.GetView();
-	XMMATRIX P = mCamera.GetProj();
-	XMMATRIX viewProj = V * P;
-	XMStoreFloat4x4(&buffer.viewProj, viewProj);
-
+	buffer.viewProj = mCamera.GetViewProjF();
 	buffer.eyePosition = mCamera.GetPositionF();
 
 	buffer.ambientLight = { 0.25f, 0.25f, 0.35f, 1.0f };
