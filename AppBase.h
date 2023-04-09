@@ -53,16 +53,6 @@ protected:
 
     virtual void UpdateMainPassCB(const Timer& timer);
 
-    enum class ShaderTarget
-    {
-        VS,
-        PS,
-    };
-
-    ComPtr<ID3DBlob> CompileShader(const std::wstring& fileName,
-                                   const D3D_SHADER_MACRO* defines,
-                                   const std::string& entryPoint,
-                                   const ShaderTarget target);
 
     ComPtr<ID3D11Device> mDevice;
     ComPtr<ID3D11DeviceContext> mContext;
@@ -78,9 +68,10 @@ protected:
 
     D3D11_PRIMITIVE_TOPOLOGY mPrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
-    // default shaders
-    ComPtr<ID3D11VertexShader> mVertexShader;
-    ComPtr<ID3D11PixelShader> mPixelShader;
+    // shaders
+    ComPtr<ID3D11VertexShader> mDefaultVS;
+    ComPtr<ID3D11PixelShader> mDefaultPS;
+    ComPtr<ID3D11VertexShader> mFullscreenVS;
 
     struct MainPassCB
     {
@@ -114,15 +105,13 @@ protected:
 
     static_assert((sizeof(MainPassCB) % 16) == 0, "constant buffer size must be 16-byte aligned");
 
-
     ComPtr<ID3D11Buffer> mMainPassCB;
 
+    MeshManager mMeshManager;
+    MaterialManager mMaterialManager;
     ObjectManager mObjectManager;
 
-    // materials
-    MaterialManager mMaterialManager;
-
-    MeshManager mMeshManager;
+    Lighting mLighting;
 
 private:
 
@@ -171,7 +160,5 @@ private:
     // textures
 
 
-    // lights
-    Lighting mLighting;
 
 };

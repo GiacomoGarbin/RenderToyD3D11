@@ -117,5 +117,5 @@ private:
     ComPtr<ID3D11Buffer> mBuffer;
     ComPtr<ID3D11ShaderResourceView> mBufferSRV;
 
-    std::size_t mMaterialCount;
+    std::size_t mMaterialCount = 0;
 };

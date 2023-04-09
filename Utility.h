@@ -66,3 +66,14 @@ inline std::wstring AnsiToWString(const std::string& str)
 #endif // ThrowIfFailed
 
 void NameResource(ID3D11DeviceChild* pDeviceChild, const std::string& name);
+
+enum class ShaderTarget
+{
+    VS,
+    PS,
+};
+
+ComPtr<ID3DBlob> CompileShader(const std::wstring& fileName,
+                               const D3D_SHADER_MACRO* defines,
+                               const std::string& entryPoint,
+                               const ShaderTarget target);
