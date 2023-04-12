@@ -22,6 +22,7 @@ using namespace DirectX;
 #include "MaterialManager.h"
 #include "MeshManager.h"
 #include "ObjectManager.h"
+#include "TextureManager.h"
 #include "Timer.h"
 #include "Utility.h"
 
@@ -80,7 +81,7 @@ protected:
         //XMFLOAT4X4 proj = MathHelper::Identity4x4();
         //XMFLOAT4X4 ProjInverse = MathHelper::Identity4x4();
         XMFLOAT4X4 viewProj;
-//        XMFLOAT4X4 ViewProjInverse = MathHelper::Identity4x4();
+        XMFLOAT4X4 viewProjInv;
 //        XMFLOAT4X4 ShadowTransform = MathHelper::Identity4x4();
         XMFLOAT3 eyePosition = { 0.0f, 0.0f, 0.0f };
         float padding1;
@@ -110,10 +111,12 @@ protected:
     MeshManager mMeshManager;
     MaterialManager mMaterialManager;
     ObjectManager mObjectManager;
-
+    TextureManager mTextureManager;
     Lighting mLighting;
 
     ComPtr<ID3D11ShaderResourceView> mDepthBufferSRV;
+
+    ComPtr<ID3D11SamplerState> mSamplerLinearWrap;
 
 private:
 

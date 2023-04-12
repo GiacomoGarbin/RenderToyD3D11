@@ -14,14 +14,20 @@ using namespace DirectX;
 
 struct Material
 {
+    Material()
+    {
+        XMStoreFloat4x4(&uvTransform, XMMatrixIdentity());
+    }
+
     XMFLOAT4 diffuse = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
     XMFLOAT3 fresnel = XMFLOAT3(0.01f, 0.01f, 0.01f);
     float    roughness = 0.25f;
 
-    //int DiffuseSRVHeapIndex = -1;
-    //int NormalSRVHeapIndex = -1;
+    int diffuseTextureIndex = -1;
+    int normalTextureIndex = -1;
+    XMFLOAT2 padding;
 
-    //XMFLOAT4X4 transform = MathHelper::Identity4x4();
+    XMFLOAT4X4 uvTransform;
 };
 
 class MaterialManager
@@ -44,7 +50,8 @@ public:
                 mBuffer.Reset();
                 mBufferSRV.Reset();
 
-                mMaterialCount = std::size_t(1.5f * mMaterials.size());
+                //mMaterialCount = std::size_t(1.5f * mMaterials.size());
+                mMaterialCount = mMaterials.size();
 
                 D3D11_BUFFER_DESC desc;
                 desc.ByteWidth = sizeof(Material) * UINT(mMaterialCount);

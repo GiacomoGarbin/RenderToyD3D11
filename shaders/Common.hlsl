@@ -1,43 +1,33 @@
+#if FIXME
+#include "../RenderToyD3D11/shaders/LightingUtils.hlsl"
+#else
 #include "LightingUtils.hlsl"
+#endif
 
 struct MaterialData
 {
 	float4 diffuse;
 	float3 fresnel;
 	float  roughness;
-	// float4x4 transform;
-	// uint DiffuseTextureIndex;
-	// uint NormalTextureIndex;
-	// float2 padding;
+	int diffuseTextureIndex;
+	int normalTextureIndex;
+	float2 padding;
+	float4x4 uvTransform;
 };
-
-// // sky cube map texture
-// TextureCube gCubeMap : register(t0, space0);
-// // shadow map texture
-// Texture2D gShadowMap : register(t1, space0);
-// // ambient occlusion map texture
-// Texture2D gAmbientOcclusionMap : register(t2, space0);
-// // array of textures
-// Texture2D gDiffuseTexture[6 + 8] : register(t3, space0);
 
 // material buffer, it contains all materials
 StructuredBuffer<MaterialData> gMaterialBuffer : register(t0);
 
+Texture2DArray gDiffuseTextures : register(t1);
+Texture2DArray gNormalTextures : register(t2);
+
 // SamplerState gSamplerPointWrap        : register(s0);
 // SamplerState gSamplerPointClamp       : register(s1);
-// SamplerState gSamplerLinearWrap       : register(s2);
+SamplerState gSamplerLinearWrap       : register(s2);
 // SamplerState gSamplerLinearClamp      : register(s3);
 // SamplerState gSamplerAnisotropicWrap  : register(s4);
 // SamplerState gSamplerAnisotropicClamp : register(s5);
 // SamplerComparisonState gSamplerShadow : register(s6);
-
-cbuffer ObjectCB : register(b1)
-{
-	float4x4 gWorld;
-	// float4x4 gTexCoordTransform;
-	uint gMaterialIndex;
-	float3 padding;
-};
 
 // cbuffer SkinnedCB : register(b1)
 // {
@@ -51,7 +41,7 @@ cbuffer MainPassCB : register(b0)
 // 	float4x4 gProj;
 // 	float4x4 gProjInverse;
 	float4x4 gViewProj;
-// 	float4x4 gViewProjInverse;
+	float4x4 viewProjInv;
 // 	float4x4 gShadowMapTransform;
 	float3 gEyePosition;
 	float padding1;

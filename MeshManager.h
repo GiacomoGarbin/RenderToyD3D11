@@ -1,10 +1,17 @@
 #pragma once
 
+// windows
+#include <wrl.h>
+#include <comdef.h>
+using Microsoft::WRL::ComPtr;
+
 // std
+#include <cassert>
 #include <unordered_map>
 #include <vector>
 
 // d3d
+#include <d3d11.h>
 #include <directxmath.h>
 using namespace DirectX;
 
@@ -15,8 +22,8 @@ struct VertexData
 {
 	XMFLOAT3 position;
 	XMFLOAT3 normal;
-	XMFLOAT3 tangent;
 	XMFLOAT2 uv;
+	XMFLOAT3 tangent;
 
 	VertexData();
 	VertexData(float px, float py, float pz,

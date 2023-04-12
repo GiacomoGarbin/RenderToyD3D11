@@ -100,8 +100,14 @@ private:
 
     struct ObjectCB
     {
+        ObjectCB()
+        {
+            XMStoreFloat4x4(&world, XMMatrixIdentity());
+            XMStoreFloat4x4(&uvTransform, XMMatrixIdentity());
+        }
+
         XMFLOAT4X4 world;
-        //XMFLOAT4X4 TexCoordTransform = MathHelper::Identity4x4();
+        XMFLOAT4X4 uvTransform;
         UINT material = -1;
         XMFLOAT3 padding;
     };

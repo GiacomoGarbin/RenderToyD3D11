@@ -3,6 +3,9 @@
 // windows
 #include <windowsx.h>
 
+// d3d
+#include <directxcolors.h>
+
 // std
 #include <cassert>
 #include <vector>
@@ -122,35 +125,29 @@ bool AppBase::Init()
 		NameResource(mMainPassCB.Get(), "MainPassCB");
 	}
 
+	// sampler states
+	{
+		D3D11_SAMPLER_DESC desc;
+		desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+		desc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+		desc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+		desc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+		desc.MipLODBias = 0.0f;
+		desc.MaxAnisotropy = 1;
+		desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+		//desc.BorderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+		desc.MinLOD = -FLT_MAX;
+		desc.MaxLOD = +FLT_MAX;
+
+		ThrowIfFailed(mDevice->CreateSamplerState(&desc, &mSamplerLinearWrap));
+
+		NameResource(mSamplerLinearWrap.Get(), "SamplerLinearWrap");
+	}
+
 	mMeshManager.Init(mDevice, mContext);
 	mMaterialManager.Init(mDevice, mContext);
 	mObjectManager.Init(mDevice, mContext);
-
-	MeshData mesh = MeshManager::CreateBox(1, 1, 1);
-
-	Material material;
-	material.diffuse = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
-	material.fresnel = XMFLOAT3(0.6f, 0.6f, 0.6f);
-	material.roughness = 0.2f;
-
-	Object object;
-	object.mesh = mMeshManager.AddMesh("box", mesh);
-	object.material = mMaterialManager.AddMaterial("default", material);
-	XMStoreFloat4x4(&object.world, XMMatrixScaling(10, 1, 10) * XMMatrixTranslation(0, -1, 0));
-
-	mObjectManager.AddObject(object);
-
-	for (float x = -1; x <= +1; ++x)
-	{
-		for (float z = -1; z <= +1; ++z)
-		{
-			//if (x != 0 || z != 0) continue;
-
-			XMStoreFloat4x4(&object.world, XMMatrixTranslation(x * 2, 0, z * 2));
-
-			mObjectManager.AddObject(object);
-		}
-	}
+	mTextureManager.Init(mDevice, mContext);
 
 	return true;
 }
@@ -209,7 +206,7 @@ bool AppBase::InitDirect3D()
 	ThrowIfFailed(CreateDXGIFactory1(__uuidof(IDXGIFactory1),
 									 reinterpret_cast<void**>(pFactory.GetAddressOf())));
 
-#if 0 // list GPUs
+#if 1 // list GPUs
 	IDXGIAdapter1* pAdapter;
 	std::vector<ComPtr<IDXGIAdapter1>> pAdapters;
 
@@ -247,8 +244,8 @@ bool AppBase::InitDirect3D()
 
 		D3D_FEATURE_LEVEL featureLevel;
 
-		ThrowIfFailed(D3D11CreateDevice(nullptr,
-										D3D_DRIVER_TYPE_HARDWARE,
+		ThrowIfFailed(D3D11CreateDevice(pAdapters[1].Get(),
+										D3D_DRIVER_TYPE_UNKNOWN, // D3D_DRIVER_TYPE_HARDWARE,
 										nullptr,
 										flags,
 										nullptr,
@@ -788,6 +785,7 @@ void AppBase::UpdateMainPassCB(const Timer& timer)
 	MainPassCB buffer;
 
 	buffer.viewProj = mCamera.GetViewProjF();
+	buffer.viewProjInv = mCamera.GetViewProjInvF();
 	buffer.eyePosition = mCamera.GetPositionF();
 
 	buffer.ambientLight = { 0.25f, 0.25f, 0.35f, 1.0f };

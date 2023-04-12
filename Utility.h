@@ -77,3 +77,5 @@ ComPtr<ID3DBlob> CompileShader(const std::wstring& fileName,
                                const D3D_SHADER_MACRO* defines,
                                const std::string& entryPoint,
                                const ShaderTarget target);
+
+std::wstring ToWideString(const std::string& narrow);

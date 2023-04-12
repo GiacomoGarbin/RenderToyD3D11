@@ -60,3 +60,9 @@ ComPtr<ID3DBlob> CompileShader(const std::wstring& fileName,
 
 	return code;
 }
+
+std::wstring ToWideString(const std::string& narrow)
+{
+	// very bad way to convert a narrow string to a wide string
+	return std::wstring(narrow.begin(), narrow.end());
+}
