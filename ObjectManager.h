@@ -25,11 +25,13 @@ struct Object
         , material(-1)
     {
         XMStoreFloat4x4(&world, XMMatrixIdentity());
+        XMStoreFloat4x4(&uvTransform, XMMatrixIdentity());
     }
 
     std::size_t mesh;
     std::size_t material;
     XMFLOAT4X4  world;
+    XMFLOAT4X4  uvTransform;
 
     // raster state
     // depth stencil state
@@ -66,6 +68,7 @@ public:
 
         ObjectCB buffer;
         buffer.world    = object.world;
+        buffer.uvTransform = object.uvTransform;
         buffer.material = UINT(object.material);
 
         mContext->UpdateSubresource(mBuffer.Get(), 0, nullptr, &buffer, 0, 0);

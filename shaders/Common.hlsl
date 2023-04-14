@@ -1,3 +1,6 @@
+#ifndef COMMON
+#define COMMON
+
 #if FIXME
 #include "../RenderToyD3D11/shaders/LightingUtils.hlsl"
 #else
@@ -114,3 +117,5 @@ cbuffer MainPassCB : register(b0)
     
 //     return light / 9.0f;
 // }
+
+#endif // COMMON

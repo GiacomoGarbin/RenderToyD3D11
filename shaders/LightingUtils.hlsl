@@ -1,3 +1,6 @@
+#ifndef LIGHTINGUTILS
+#define LIGHTINGUTILS
+
 #define LIGHT_MAX_COUNT 16
 
 #ifndef LIGHT_DIR_COUNT
@@ -113,3 +116,5 @@ float4 ComputeLighting(Light lights[LIGHT_MAX_COUNT],
 
     return float4(result, 0.0f);
 }
+
+#endif // LIGHTINGUTILS

@@ -1,4 +1,11 @@
+#ifndef DEFAULT
+#define DEFAULT
+
+#if FIXME
+#include "../RenderToyD3D11/shaders/Common.hlsl"
+#else
 #include "Common.hlsl"
+#endif
 
 cbuffer ObjectCB : register(b1)
 {
@@ -16,7 +23,7 @@ struct VertexIn
 	float3 tangent  : TANGENT;
 };
 
-struct VertexOut
+struct VertexOut1
 {
 	float4 position : SV_POSITION;
 	float3 world    : POSITION0;
@@ -25,9 +32,9 @@ struct VertexOut
 	float3 tangent  : TANGENT;
 };
 
-VertexOut DefaultVS(VertexIn vin)
+VertexOut1 DefaultVS(VertexIn vin)
 {
-	VertexOut vout;
+	VertexOut1 vout;
 
 	const MaterialData material = gMaterialBuffer[gMaterialIndex];
 	
@@ -74,9 +81,9 @@ VertexOut DefaultVS(VertexIn vin)
 	return vout;
 }
 
-float4 DefaultPS(const VertexOut pin) : SV_Target
+float4 DefaultImpl(const VertexOut1 pin, const int materialIndex)
 {
-	const MaterialData material = gMaterialBuffer[gMaterialIndex];
+	const MaterialData material = gMaterialBuffer[materialIndex];
 
 	float4 diffuse = material.diffuse;
 	diffuse *= gDiffuseTextures.Sample(gSamplerLinearWrap, float3(pin.uv, material.diffuseTextureIndex));
@@ -146,3 +153,10 @@ float4 DefaultPS(const VertexOut pin) : SV_Target
 
 	return result;
 }
+
+float4 DefaultPS(const VertexOut1 pin) : SV_Target
+{
+	return DefaultImpl(pin, gMaterialIndex);
+}
+
+#endif // DEFAULT
