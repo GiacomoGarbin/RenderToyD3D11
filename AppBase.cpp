@@ -11,6 +11,13 @@
 #include <vector>
 #include <iostream>
 
+#if IMGUI
+// imgui
+#include "../imgui/imgui.h"
+#include "../imgui/backends/imgui_impl_win32.h"
+#include "../imgui/backends/imgui_impl_dx11.h"
+#endif // IMGUI
+
 LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	// forward hwnd on because we can get messages (e.g., WM_CREATE)
@@ -46,6 +53,15 @@ bool AppBase::Init()
 	{
 		return false;
 	}
+
+#if IMGUI
+	InitImGui();
+
+	if (!GPUProfilerInit())
+	{
+		return false;
+	}
+#endif // IMGUI
 
 	OnResize();
 
@@ -206,7 +222,7 @@ bool AppBase::InitDirect3D()
 	ThrowIfFailed(CreateDXGIFactory1(__uuidof(IDXGIFactory1),
 									 reinterpret_cast<void**>(pFactory.GetAddressOf())));
 
-#if 1 // list GPUs
+#if 1 // TODO: switch GPU at runtime
 	IDXGIAdapter1* pAdapter;
 	std::vector<ComPtr<IDXGIAdapter1>> pAdapters;
 
@@ -219,24 +235,25 @@ bool AppBase::InitDirect3D()
 	{
 		DXGI_ADAPTER_DESC desc;
 		ThrowIfFailed(pAdapter->GetDesc(&desc));
-		
-		// display current GPU name on ImGui
 	}
 #endif
 
-	// GPU name
-	{
-		ComPtr<IDXGIAdapter1> pAdapter;
-		ThrowIfFailed(pFactory->EnumAdapters1(0, &pAdapter));
-
-		DXGI_ADAPTER_DESC desc;
-		ThrowIfFailed(pAdapter->GetDesc(&desc));
-
-		mGPUName = desc.Description;
-	}
-
 	// device & context
 	{
+		mCurrGPUIndex = 1;
+
+		ComPtr<IDXGIAdapter1> pAdapter;
+		ThrowIfFailed(pFactory->EnumAdapters1(mCurrGPUIndex, &pAdapter));
+
+		// get GPU name
+		{
+			DXGI_ADAPTER_DESC desc;
+			ThrowIfFailed(pAdapter->GetDesc(&desc));
+
+			mCurrGPUName = desc.Description;
+			mIsCurrGPUNvidia = desc.VendorId == 4318;
+		}
+
 		UINT flags = 0;
 #ifdef _DEBUG
 		flags |= D3D11_CREATE_DEVICE_DEBUG;
@@ -244,7 +261,7 @@ bool AppBase::InitDirect3D()
 
 		D3D_FEATURE_LEVEL featureLevel;
 
-		ThrowIfFailed(D3D11CreateDevice(pAdapters[1].Get(),
+		ThrowIfFailed(D3D11CreateDevice(pAdapter.Get(),
 										D3D_DRIVER_TYPE_UNKNOWN, // D3D_DRIVER_TYPE_HARDWARE,
 										nullptr,
 										flags,
@@ -363,6 +380,174 @@ bool AppBase::InitDirect3D()
 	return true;
 }
 
+#if IMGUI
+void AppBase::InitImGui()
+{
+	IMGUI_CHECKVERSION();
+
+	ImGui::CreateContext();
+	
+	//ImGuiIO& io = ImGui::GetIO(); (void)io;
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // enable keyboard
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // enable gamepad
+
+	// setup style
+	ImGui::StyleColorsDark();
+	//ImGui::StyleColorsLight();
+
+	// setup platform/renderer backends
+	ImGui_ImplWin32_Init(mWindow);
+	ImGui_ImplDX11_Init(mDevice.Get(), mContext.Get());
+}
+
+void AppBase::CleanupImGui()
+{
+	ImGui_ImplDX11_Shutdown();
+	ImGui_ImplWin32_Shutdown();
+	ImGui::DestroyContext();
+}
+
+bool AppBase::GPUProfilerInit()
+{
+	mQueries.resize((1 + std::size_t(TimestampQueryType::Count)) * mSwapChainBufferCount);
+
+	D3D11_QUERY_DESC desc;
+
+	desc.Query = D3D11_QUERY_TIMESTAMP_DISJOINT;
+	desc.MiscFlags = 0;
+
+	for (std::size_t i = 0; i < mSwapChainBufferCount; ++i)
+	{
+		// the first mSwapChainBufferCount queries are disjoint
+		ThrowIfFailed(mDevice->CreateQuery(&desc, &mQueries[i]));
+	}
+
+	desc.Query = D3D11_QUERY_TIMESTAMP;
+
+	for (std::size_t i = mSwapChainBufferCount; i < mQueries.size(); ++i)
+	{
+		// the remaining queries are timestamps
+		ThrowIfFailed(mDevice->CreateQuery(&desc, &mQueries[i]));
+	}
+
+	return true;
+}
+
+void AppBase::GPUProfilerShutdown()
+{
+	mQueries.clear();
+}
+
+void AppBase::GPUProfilerBegin()
+{
+	// begin disjoint
+	mContext->Begin(mQueries[mCurrQueryIndex].Get());
+	
+	GPUProfilerTimestamp(TimestampQueryType::BeginFrame);
+}
+
+void AppBase::GPUProfilerEnd()
+{
+	GPUProfilerTimestamp(TimestampQueryType::EndFrame);
+	
+	// end disjoint
+	mContext->End(mQueries[mCurrQueryIndex].Get());
+
+	mCurrQueryIndex = (mCurrQueryIndex + 1) % mSwapChainBufferCount;
+}
+
+inline std::size_t AppBase::GetTimestampQueryIndex(const TimestampQueryType type) const
+{
+	return mSwapChainBufferCount + std::size_t(type) * mSwapChainBufferCount + mCurrQueryIndex;
+}
+
+inline std::size_t AppBase::GetTimestampGetDataIndex(const TimestampQueryType type) const
+{
+	return mSwapChainBufferCount + std::size_t(type) * mSwapChainBufferCount + mCurrGetDataIndex;
+}
+
+void AppBase::GPUProfilerTimestamp(const TimestampQueryType type)
+{
+	const std::size_t i = GetTimestampQueryIndex(type);
+
+	mContext->End(mQueries[i].Get());
+}
+
+void AppBase::ShowPerfWindow()
+{
+	ImGui::Begin("Performance", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+
+	ImGui::Text("GPU: %ls", mCurrGPUName.c_str());
+
+	ImGui::Text("Resolution: %dx%d", mWindowWidth, mWindowHeight);
+
+	const float fps = 1 / mTimer.GetDeltaTime();
+	const float cpuTime = mTimer.GetDeltaTime() * 1000;
+	float gpuTime = 0;
+
+	float gpuTimeMainPass = 0;
+	float gpuTimeShadows = 0;
+	float gpuTimeReflections = 0;
+	float gpuTimeImGui = 0;
+
+	if (mCurrGetDataIndex != -1)
+	{
+		while (mContext->GetData(mQueries[mCurrGetDataIndex].Get(), nullptr, 0, 0) == S_FALSE)
+		{
+			Sleep(1);
+		}
+
+		D3D11_QUERY_DATA_TIMESTAMP_DISJOINT data;
+		ThrowIfFailed(mContext->GetData(mQueries[mCurrGetDataIndex].Get(), &data, sizeof(data), 0));
+
+		if (!data.Disjoint)
+		{
+			UINT64 timestamps[std::size_t(TimestampQueryType::Count)];
+
+			for (std::size_t i = 0; i < std::size_t(TimestampQueryType::Count); ++i)
+			{
+				const std::size_t query = GetTimestampGetDataIndex(TimestampQueryType(i));
+
+				// TODO: make this test properly
+
+				while (!mIsCurrGPUNvidia && (mContext->GetData(mQueries[query].Get(), nullptr, 0, 0) == S_FALSE))
+				{
+					Sleep(1);
+				}
+
+				ThrowIfFailed(mContext->GetData(mQueries[query].Get(), &timestamps[i], sizeof(UINT64), 0));
+			}
+
+			gpuTime = 1000 * float(timestamps[std::size_t(TimestampQueryType::EndFrame)] - timestamps[std::size_t(TimestampQueryType::BeginFrame)]) / float(data.Frequency);
+
+			gpuTimeMainPass = 1000 * float(timestamps[std::size_t(TimestampQueryType::RayTracedBegin)] - timestamps[std::size_t(TimestampQueryType::BeginFrame)]) / float(data.Frequency);
+			gpuTimeShadows = 1000 * float(timestamps[std::size_t(TimestampQueryType::RayTracedShadows)] - timestamps[std::size_t(TimestampQueryType::RayTracedBegin)]) / float(data.Frequency);
+			gpuTimeReflections = 1000 * float(timestamps[std::size_t(TimestampQueryType::RayTracedReflections)] - timestamps[std::size_t(TimestampQueryType::RayTracedShadows)]) / float(data.Frequency);
+			gpuTimeImGui = 1000 * float(timestamps[std::size_t(TimestampQueryType::ImGuiEnd)] - timestamps[std::size_t(TimestampQueryType::ImGuiBegin)]) / float(data.Frequency);
+		}
+
+		mCurrGetDataIndex = (mCurrGetDataIndex + 1) % mSwapChainBufferCount;
+	}
+	else
+	{
+		mCurrGetDataIndex = 0;
+	}
+
+	ImGui::Text("FPS: %6.2f (CPU: %6.2f ms GPU: %6.2f ms)", fps, cpuTime, gpuTime);
+
+	ImGui::Text("MainPass:    %6.2f ms \n"
+				"Shadows:     %6.2f ms \n"
+				"Reflections: %6.2f ms \n"
+				"ImGui:       %6.2f ms \n",
+				gpuTimeMainPass,
+				gpuTimeShadows,
+				gpuTimeReflections,
+				gpuTimeImGui);
+
+	ImGui::End();
+}
+#endif // IMGUI
+
 // void AppBase::CreateRTVAndDSVDescriptorHeaps()
 // {
 // 	// ImGUI SRV
@@ -455,7 +640,7 @@ void AppBase::OnResize()
 			NameResource(mDepthStencilBufferDSV.Get(), "DepthStencilBufferDSV");
 		}
 
-		// shader resource view
+		// depth buffer SRV
 		{
 			D3D11_SHADER_RESOURCE_VIEW_DESC desc;
 			desc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
@@ -487,14 +672,18 @@ void AppBase::OnResize()
 	mCamera.SetLens(0.25f * XM_PI, mWindowAspectRatio, 1.0f, 1000.0f);
 }
 
-// extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+#if IMGUI
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+#endif // IMGUI
 
 LRESULT AppBase::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	// if (ImGui_ImplWin32_WndProcHandler(mWindow, msg, wParam, lParam))
-	// {
-	// 	return true;
-	// }
+#if IMGUI
+	if (ImGui_ImplWin32_WndProcHandler(mWindow, msg, wParam, lParam))
+	{
+		return true;
+	}
+#endif // IMGUI
 
 	switch (msg)
 	{
@@ -704,24 +893,6 @@ int AppBase::Run()
 
 	mTimer.Reset();
 
-	// IMGUI_CHECKVERSION();
-	// ImGui::CreateContext();
-	// ImGuiIO &io = ImGui::GetIO();
-	// (void)io;
-	// // io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-	// // io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-
-	// ImGui::StyleColorsDark();
-	// // ImGui::StyleColorsClassic();
-
-	// ImGui_ImplWin32_Init(mWindow);
-	// ImGui_ImplDX12_Init(mDevice.Get(),
-	// 					SwapChainBufferSize,
-	// 					mBackBufferFormat,
-	// 					mSRVHeap.Get(),
-	// 					mSRVHeap->GetCPUDescriptorHandleForHeapStart(),
-	// 					mSRVHeap->GetGPUDescriptorHandleForHeapStart());
-
 	while (msg.message != WM_QUIT)
 	{
 		if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
@@ -735,11 +906,33 @@ int AppBase::Run()
 
 			if (!mIsAppPaused)
 			{
-				//CalculateFrameStats();
+#if IMGUI
+				GPUProfilerBegin();
+#endif // IMGUI
+
 				Update(mTimer);
 				Draw(mTimer);
 
+#if IMGUI
+				GPUProfilerTimestamp(TimestampQueryType::ImGuiBegin);
+
+				ImGui_ImplDX11_NewFrame();
+				ImGui_ImplWin32_NewFrame();
+				ImGui::NewFrame();
+
+				ShowPerfWindow();
+
+				ImGui::Render();
+				ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+
+				GPUProfilerTimestamp(TimestampQueryType::ImGuiEnd);
+#endif // IMGUI
+
 				ThrowIfFailed(mSwapChain->Present(0, 0));
+
+#if IMGUI
+				GPUProfilerEnd();
+#endif // IMGUI
 			}
 			else
 			{
@@ -748,37 +941,13 @@ int AppBase::Run()
 		}
 	}
 
-	// ImGui_ImplDX12_Shutdown();
-	// ImGui_ImplWin32_Shutdown();
-	// ImGui::DestroyContext();
+#if IMGUI
+	CleanupImGui();
+	GPUProfilerShutdown();
+#endif // IMGUI
 
 	return int(msg.wParam);
 }
-
-// void AppBase::CalculateFrameStats()
-// {
-// 	static int FrameCount = 0;
-// 	static float TimeElapsed = 0.0f;
-
-// 	FrameCount++;
-
-// 	// compute averages over one second period
-// 	if ((mTimer.GetTotalTime() - TimeElapsed) >= 1.0f)
-// 	{
-// 		const float fps = static_cast<float>(FrameCount); // fps = FrameCount / 1 sec
-// 		const float mspf = 1000.0f / fps;				  // milliseconds per frame
-
-// 		const std::wstring windowText = mWindowTitle +
-// 										L"    fps: " + std::to_wstring(fps) +
-// 										L"   mspf: " + std::to_wstring(mspf);
-
-// 		SetWindowText(mWindow, windowText.c_str());
-
-// 		// reset for next average
-// 		FrameCount = 0;
-// 		TimeElapsed += 1.0f;
-// 	}
-// }
 
 void AppBase::UpdateMainPassCB(const Timer& timer)
 {

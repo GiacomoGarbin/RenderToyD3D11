@@ -15,7 +15,7 @@ public:
 
 private:
 	double mSecondsPerCount;
-	double mDeltaTime;
+	double mDeltaTime; // microseconds
 
 	__int64 mBaseTime;
 	__int64 mPauseTime;

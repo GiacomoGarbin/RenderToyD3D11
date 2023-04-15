@@ -10,8 +10,6 @@ using Microsoft::WRL::ComPtr;
 #include <directxmath.h>
 using namespace DirectX;
 
-// #include "DDSTextureLoader.h"
-
 // std
 #include <string>
 #include <sstream>
@@ -25,6 +23,9 @@ using namespace DirectX;
 #include "TextureManager.h"
 #include "Timer.h"
 #include "Utility.h"
+
+// imgui
+#define IMGUI _DEBUG
 
 class AppBase
 {
@@ -118,12 +119,46 @@ protected:
 
     ComPtr<ID3D11SamplerState> mSamplerLinearWrap;
 
+    enum class TimestampQueryType
+    {
+        BeginFrame,
+
+        RayTracedBegin,
+        RayTracedShadows,
+        RayTracedReflections,
+
+        ImGuiBegin,
+        ImGuiEnd,
+
+        EndFrame,
+
+        Count
+    };
+
+    void GPUProfilerTimestamp(const TimestampQueryType type);
+
 private:
 
     bool InitWindow();
     bool InitDirect3D();
+#if IMGUI
+    void InitImGui();
+    void CleanupImGui();
 
-    // void CalculateFrameStats();
+    //std::size_t mTimestampQueryCount = 3;
+    std::vector<ComPtr<ID3D11Query>> mQueries;
+    std::size_t mCurrQueryIndex = 0;
+    std::size_t mCurrGetDataIndex = -1;
+
+    bool GPUProfilerInit();
+    void GPUProfilerShutdown();
+    void GPUProfilerBegin();
+    void GPUProfilerEnd();
+    std::size_t GetTimestampQueryIndex(const TimestampQueryType type) const;
+    std::size_t GetTimestampGetDataIndex(const TimestampQueryType type) const;
+
+    void ShowPerfWindow();
+#endif // IMGUI
 
     static AppBase* mApp;
 
@@ -144,7 +179,9 @@ private:
     UINT mWindowHeight = 600;
     float mWindowAspectRatio = float(mWindowWidth) / float(mWindowHeight);
 
-    std::wstring mGPUName;
+    UINT mCurrGPUIndex;
+    std::wstring mCurrGPUName;
+    bool mIsCurrGPUNvidia;
 
     UINT mSwapChainBufferCount = 2;
     DXGI_FORMAT mSwapChainFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
