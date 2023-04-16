@@ -25,7 +25,7 @@ using namespace DirectX;
 #include "Utility.h"
 
 // imgui
-#define IMGUI _DEBUG
+#define IMGUI _DEBUG || 1
 
 class AppBase
 {
@@ -91,6 +91,10 @@ protected:
     ComPtr<ID3D11RenderTargetView> mShadowsResolveRTV;
     ComPtr<ID3D11ShaderResourceView> mShadowsResolveSRV;
 
+    // reflections resolve
+    ComPtr<ID3D11RenderTargetView> mReflectionsResolveRTV;
+    ComPtr<ID3D11ShaderResourceView> mReflectionsResolveSRV;
+
     struct MainPassCB
     {
         //XMFLOAT4X4 view = MathHelper::Identity4x4();
@@ -138,13 +142,22 @@ protected:
 
     ComPtr<ID3D11SamplerState> mSamplerLinearWrap;
 
+#if IMGUI
     enum class TimestampQueryType
     {
         BeginFrame,
 
-        RayTracedBegin,
-        RayTracedShadows,
-        RayTracedReflections,
+        DepthGbufferPrepassBegin,
+        DepthGbufferPrepassEnd,
+
+        RayTracedShadowsBegin,
+        RayTracedShadowsEnd,
+
+        RayTracedReflectionsBegin,
+        RayTracedReflectionsEnd,
+
+        MainPassBegin,
+        MainPassEnd,
 
         ImGuiBegin,
         ImGuiEnd,
@@ -155,6 +168,7 @@ protected:
     };
 
     void GPUProfilerTimestamp(const TimestampQueryType type);
+#endif // IMGUI
 
 private:
 

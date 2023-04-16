@@ -34,13 +34,10 @@ struct Object
     XMFLOAT4X4  world;
     XMFLOAT4X4  uvTransform;
 
-    // raster state
-    // depth stencil state
-    
+    // state overrides
+    ComPtr<ID3D11PixelShader> pixelShader;
     ComPtr<ID3D11DepthStencilState> depthStencilState;
     UINT stencilRef;
-
-    // blend state
 };
 
 class ObjectManager

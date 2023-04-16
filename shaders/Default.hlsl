@@ -152,10 +152,14 @@ float4 DefaultImpl(const DefaultVSOut pin, const int materialIndex)
 	// specular reflections
 	{
 		const float3 r = reflect(-toEye, normal);
-		// const float4 reflection = gCubeMap.Sample(gSamplerLinearWrap, r);
 		const float3 fresnel = SchlickFresnel(material.fresnel, normal, r);
-		// result.rgb += shininess * fresnel * reflection.rgb;
-		result.rgb += shininess * fresnel;
+		float4 reflection = 1;
+#if REFLECTIVE_SURFACE
+		// const float4 reflection = gCubeMap.Sample(gSamplerLinearWrap, r);
+		reflection = gReflectionResolve.Load(uint3(pin.position.xy, 0));
+		reflection.rgb = lerp(1, reflection.rgb, reflection.a);
+#endif // REFLECTIVE_SURFACE
+		result.rgb += shininess * fresnel * reflection.rgb;
 	}
 
 // #if FOG

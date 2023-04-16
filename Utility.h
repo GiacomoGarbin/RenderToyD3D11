@@ -13,7 +13,7 @@ using Microsoft::WRL::ComPtr;
 #include <string>
 
 #ifndef ThrowIfFailed
-#if _DEBUG
+#if _DEBUG || 1
 struct Exception
 {
     const HRESULT result;

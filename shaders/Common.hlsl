@@ -25,6 +25,9 @@ Texture2DArray gDiffuseTextures : register(t1);
 // Texture2DArray gNormalTextures : register(t2);
 
 Texture2D<float> gShadowResolve : register(t2);
+#if REFLECTIVE_SURFACE
+Texture2D gReflectionResolve : register(t3);
+#endif // REFLECTIVE_SURFACE
 
 // SamplerState gSamplerPointWrap        : register(s0);
 // SamplerState gSamplerPointClamp       : register(s1);

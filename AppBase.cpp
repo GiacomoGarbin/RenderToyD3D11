@@ -249,7 +249,7 @@ bool AppBase::InitDirect3D()
 	ThrowIfFailed(CreateDXGIFactory1(__uuidof(IDXGIFactory1),
 									 reinterpret_cast<void**>(pFactory.GetAddressOf())));
 
-#if 1 // TODO: switch GPU at runtime
+#if 0 // TODO: switch GPU at runtime
 	IDXGIAdapter1* pAdapter;
 	std::vector<ComPtr<IDXGIAdapter1>> pAdapters;
 
@@ -514,9 +514,10 @@ void AppBase::ShowPerfWindow()
 	const float cpuTime = mTimer.GetDeltaTime() * 1000;
 	float gpuTime = 0;
 
+	float gpuTimeDepthGBufferPrepass = 0;
+	float gpuTimeRayTracedShadows = 0;
+	float gpuTimeRayTracedReflections = 0;
 	float gpuTimeMainPass = 0;
-	float gpuTimeShadows = 0;
-	float gpuTimeReflections = 0;
 	float gpuTimeImGui = 0;
 
 	if (mCurrGetDataIndex != -1)
@@ -545,12 +546,18 @@ void AppBase::ShowPerfWindow()
 				ThrowIfFailed(mContext->GetData(mQueries[query].Get(), &timestamps[i], sizeof(UINT64), 0));
 			}
 
-			gpuTime = 1000 * float(timestamps[std::size_t(TimestampQueryType::EndFrame)] - timestamps[std::size_t(TimestampQueryType::BeginFrame)]) / float(data.Frequency);
+			auto CalcGpuTime = [timestamps, data](const TimestampQueryType begin, const TimestampQueryType end)
+			{
+				return (1000.0f * (timestamps[std::size_t(end)] - timestamps[std::size_t(begin)])) / data.Frequency;
+			};
 
-			gpuTimeMainPass = 1000 * float(timestamps[std::size_t(TimestampQueryType::RayTracedBegin)] - timestamps[std::size_t(TimestampQueryType::BeginFrame)]) / float(data.Frequency);
-			gpuTimeShadows = 1000 * float(timestamps[std::size_t(TimestampQueryType::RayTracedShadows)] - timestamps[std::size_t(TimestampQueryType::RayTracedBegin)]) / float(data.Frequency);
-			gpuTimeReflections = 1000 * float(timestamps[std::size_t(TimestampQueryType::RayTracedReflections)] - timestamps[std::size_t(TimestampQueryType::RayTracedShadows)]) / float(data.Frequency);
-			gpuTimeImGui = 1000 * float(timestamps[std::size_t(TimestampQueryType::ImGuiEnd)] - timestamps[std::size_t(TimestampQueryType::ImGuiBegin)]) / float(data.Frequency);
+			gpuTime = CalcGpuTime(TimestampQueryType::BeginFrame, TimestampQueryType::EndFrame);
+
+			gpuTimeDepthGBufferPrepass = CalcGpuTime(TimestampQueryType::DepthGbufferPrepassBegin, TimestampQueryType::DepthGbufferPrepassEnd);
+			gpuTimeRayTracedShadows = CalcGpuTime(TimestampQueryType::RayTracedShadowsBegin, TimestampQueryType::RayTracedShadowsEnd);
+			gpuTimeRayTracedReflections = CalcGpuTime(TimestampQueryType::RayTracedReflectionsBegin, TimestampQueryType::RayTracedReflectionsEnd);
+			gpuTimeMainPass = CalcGpuTime(TimestampQueryType::MainPassBegin, TimestampQueryType::MainPassEnd);
+			gpuTimeImGui = CalcGpuTime(TimestampQueryType::ImGuiBegin, TimestampQueryType::ImGuiEnd);
 		}
 
 		mCurrGetDataIndex = (mCurrGetDataIndex + 1) % mSwapChainBufferCount;
@@ -562,13 +569,15 @@ void AppBase::ShowPerfWindow()
 
 	ImGui::Text("FPS: %6.2f (CPU: %6.2f ms GPU: %6.2f ms)", fps, cpuTime, gpuTime);
 
-	ImGui::Text("MainPass:    %6.2f ms \n"
-				"Shadows:     %6.2f ms \n"
-				"Reflections: %6.2f ms \n"
-				"ImGui:       %6.2f ms \n",
+	ImGui::Text("DepthGBufferPrepass:  %6.2f ms \n"
+				"RayTracedShadows:     %6.2f ms \n"
+				"RayTracedReflections: %6.2f ms \n"
+				"MainPass:             %6.2f ms \n"
+				"ImGui:                %6.2f ms \n",
+				gpuTimeDepthGBufferPrepass,
+				gpuTimeRayTracedShadows,
+				gpuTimeRayTracedReflections,
 				gpuTimeMainPass,
-				gpuTimeShadows,
-				gpuTimeReflections,
 				gpuTimeImGui);
 
 	ImGui::End();
@@ -747,6 +756,43 @@ void AppBase::OnResize()
 														&mShadowsResolveSRV));
 
 		NameResource(mShadowsResolveSRV.Get(), "ShadowsResolveSRV");
+	}
+
+	// reflections resolve RTV and SRV
+	{
+		D3D11_TEXTURE2D_DESC desc;
+		desc.Width = mWindowWidth;
+		desc.Height = mWindowHeight;
+		desc.MipLevels = 1;
+		desc.ArraySize = 1;
+		desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		desc.SampleDesc.Count = 1;
+		desc.SampleDesc.Quality = 0;
+		desc.Usage = D3D11_USAGE_DEFAULT;
+		desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+		desc.CPUAccessFlags = 0;
+		desc.MiscFlags = 0;
+
+		ComPtr<ID3D11Texture2D> pReflectionsResolve;
+		ThrowIfFailed(mDevice->CreateTexture2D(&desc,
+											   nullptr,
+											   &pReflectionsResolve));
+
+		NameResource(pReflectionsResolve.Get(), "ReflectionsResolve");
+
+		mReflectionsResolveRTV.Reset();
+		ThrowIfFailed(mDevice->CreateRenderTargetView(pReflectionsResolve.Get(),
+													  nullptr,
+													  &mReflectionsResolveRTV));
+
+		NameResource(mReflectionsResolveRTV.Get(), "ReflectionsResolveRTV");
+
+		mReflectionsResolveSRV.Reset();
+		ThrowIfFailed(mDevice->CreateShaderResourceView(pReflectionsResolve.Get(),
+														nullptr,
+														&mReflectionsResolveSRV));
+
+		NameResource(mReflectionsResolveSRV.Get(), "ReflectionsResolveSRV");
 	}
 
 	// viewport
@@ -1007,7 +1053,6 @@ int AppBase::Run()
 
 #if IMGUI
 				mUserDefinedAnnotation->BeginEvent(L"imgui");
-
 				GPUProfilerTimestamp(TimestampQueryType::ImGuiBegin);
 
 				ImGui_ImplDX11_NewFrame();
@@ -1020,7 +1065,6 @@ int AppBase::Run()
 				ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
 				GPUProfilerTimestamp(TimestampQueryType::ImGuiEnd);
-
 				mUserDefinedAnnotation->EndEvent();
 #endif // IMGUI
 
