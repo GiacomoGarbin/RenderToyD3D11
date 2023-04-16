@@ -32,12 +32,6 @@ struct DefaultVSOut
 	float3 tangent  : TANGENT;
 };
 
-struct DefaultPSOut
-{
-	float4 colour  : SV_Target0;
-	float4 gbuffer : SV_Target1; // xyz: world normal, w: material index
-};
-
 DefaultVSOut DefaultVS(DefaultVSIn vin)
 {
 	DefaultVSOut vout;
@@ -87,11 +81,12 @@ DefaultVSOut DefaultVS(DefaultVSIn vin)
 	return vout;
 }
 
-DefaultPSOut DefaultImpl(const DefaultVSOut pin, const int materialIndex)
+void GetDiffuseAndNormal(const DefaultVSOut pin,
+						 const MaterialData material,
+						 inout float4 diffuse,
+						 inout float3 normal)
 {
-	const MaterialData material = gMaterialBuffer[materialIndex];
-
-	float4 diffuse = material.diffuse;
+	diffuse = material.diffuse;
 	if (material.diffuseTextureIndex != -1)
 	{
 		diffuse *= gDiffuseTextures.Sample(gSamplerLinearWrap, float3(pin.uv, material.diffuseTextureIndex));
@@ -103,10 +98,19 @@ DefaultPSOut DefaultImpl(const DefaultVSOut pin, const int materialIndex)
 
 #if NORMAL_MAPPING
 	const float4 normalTexel = gNormalTextures.Sample(gSamplerLinearWrap, float3(pin.uv, material.normalTextureIndex));
-	const float3 normal = NormalSampleToWorldSpace(normalTexel.rgb, normalize(pin.normal), pin.tangent);
+	normal = NormalSampleToWorldSpace(normalTexel.rgb, normalize(pin.normal), pin.tangent);
 #else // NORMAL_MAPPING
-	const float3 normal = normalize(pin.normal);
+	normal = normalize(pin.normal);
 #endif // NORMAL_MAPPING
+}
+
+float4 DefaultImpl(const DefaultVSOut pin, const int materialIndex)
+{
+	const MaterialData material = gMaterialBuffer[materialIndex];
+
+	float4 diffuse;
+	float3 normal;
+	GetDiffuseAndNormal(pin, material, diffuse, normal);
 
 	float3 toEye = gEyePosition - pin.world;
 	const float distToEye = length(toEye);
@@ -140,9 +144,9 @@ DefaultPSOut DefaultImpl(const DefaultVSOut pin, const int materialIndex)
 
 	const float4 direct = ComputeLighting(gLights, lightMaterial, pin.world, normal, toEye, shadow);
 	
-	DefaultPSOut result;
+	float4 result;
 
-	result.colour = ambient + direct;
+	result = ambient + direct;
 
 	// specular reflections
 	{
@@ -150,7 +154,7 @@ DefaultPSOut DefaultImpl(const DefaultVSOut pin, const int materialIndex)
 		// const float4 reflection = gCubeMap.Sample(gSamplerLinearWrap, r);
 		const float3 fresnel = SchlickFresnel(material.fresnel, normal, r);
 		// result.rgb += shininess * fresnel * reflection.rgb;
-		result.colour.rgb += shininess * fresnel;
+		result.rgb += shininess * fresnel;
 	}
 
 // #if FOG
@@ -158,15 +162,12 @@ DefaultPSOut DefaultImpl(const DefaultVSOut pin, const int materialIndex)
 // 	result = lerp(result, gFogColor, FogAmount);
 // #endif // FOG
 
-	result.colour.a = diffuse.a;
-
-	result.gbuffer.xyz = normal;
-	result.gbuffer.w = materialIndex;
+	result.a = diffuse.a;
 
 	return result;
 }
 
-DefaultPSOut DefaultPS(const DefaultVSOut pin)
+float4 DefaultPS(const DefaultVSOut pin) : SV_Target0
 {
 	return DefaultImpl(pin, gMaterialIndex);
 }

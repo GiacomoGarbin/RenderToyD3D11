@@ -61,6 +61,11 @@ protected:
 
     ComPtr<ID3DUserDefinedAnnotation> mUserDefinedAnnotation;
 
+    struct ScopeEvent
+    {
+
+    };
+
     ComPtr<ID3D11RenderTargetView> mBackBufferRTV;
     ComPtr<ID3D11DepthStencilView> mDepthStencilBufferDSV;
     ComPtr<ID3D11DepthStencilView> mDepthStencilBufferReadOnlyDSV;
@@ -77,6 +82,10 @@ protected:
     ComPtr<ID3D11VertexShader> mDefaultVS;
     ComPtr<ID3D11PixelShader> mDefaultPS;
     ComPtr<ID3D11VertexShader> mFullscreenVS;
+    ComPtr<ID3D11PixelShader> mGBufferPS;
+
+    // states
+    ComPtr<ID3D11DepthStencilState> mDepthEqualDSS;
 
     struct MainPassCB
     {

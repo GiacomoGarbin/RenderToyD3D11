@@ -126,6 +126,33 @@ bool AppBase::Init()
 		NameResource(mFullscreenVS.Get(), "FullscreenVS");
 	}
 
+	// gbuffer pixel shader
+	{
+		std::wstring path = L"../RenderToyD3D11/shaders/GBuffer.hlsl";
+
+		ComPtr<ID3DBlob> pCode = CompileShader(path, nullptr, "GBufferPS", ShaderTarget::PS);
+
+		ThrowIfFailed(mDevice->CreatePixelShader(pCode->GetBufferPointer(),
+												 pCode->GetBufferSize(),
+												 nullptr,
+												 &mGBufferPS));
+
+		NameResource(mGBufferPS.Get(), "GBufferPS");
+	}
+
+	// depth equal DSS
+	{
+		D3D11_DEPTH_STENCIL_DESC desc;
+		desc.DepthEnable = TRUE;
+		desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
+		desc.DepthFunc = D3D11_COMPARISON_EQUAL;
+		desc.StencilEnable = FALSE;
+
+		ThrowIfFailed(mDevice->CreateDepthStencilState(&desc, &mDepthEqualDSS));
+
+		NameResource(mDepthEqualDSS.Get(), "DepthEqualDSS");
+	}
+
 	// main pass CB
 	{
 		D3D11_BUFFER_DESC desc;
