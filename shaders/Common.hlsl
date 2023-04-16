@@ -22,7 +22,9 @@ struct MaterialData
 StructuredBuffer<MaterialData> gMaterialBuffer : register(t0);
 
 Texture2DArray gDiffuseTextures : register(t1);
-Texture2DArray gNormalTextures : register(t2);
+// Texture2DArray gNormalTextures : register(t2);
+
+Texture2D<float> gShadowResolve : register(t2);
 
 // SamplerState gSamplerPointWrap        : register(s0);
 // SamplerState gSamplerPointClamp       : register(s1);

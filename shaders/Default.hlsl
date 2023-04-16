@@ -134,13 +134,14 @@ float4 DefaultImpl(const DefaultVSOut pin, const int materialIndex)
 
 	const Material lightMaterial = { diffuse, material.fresnel, shininess };
 
-// #if SHADOW || 1
-//     // only the first light casts a shadow
-//     float3 ShadowFactor = float3(1.0f, 1.0f, 1.0f);
-// 	ShadowFactor[0] = CalculateShadowFactor(pin.ShadowPositionH);
-// #else // SHADOW
-	const float3 shadow = 1.0f;
-// #endif // SHADOW
+	float3 shadow = 1.0f;
+#if 1 // SHADOW || 1
+    // only the first light casts a shadow
+	shadow[0] = gShadowResolve.Load(uint3(pin.position.xy, 0));
+	// shadow[0] = CalculateShadowFactor(pin.ShadowPositionH);
+#endif // SHADOW
+
+	// return float4(shadow[0], shadow[0], shadow[0], 1);
 
 	const float4 direct = ComputeLighting(gLights, lightMaterial, pin.world, normal, toEye, shadow);
 	

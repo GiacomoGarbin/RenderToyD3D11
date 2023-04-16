@@ -499,7 +499,6 @@ inline std::size_t AppBase::GetTimestampGetDataIndex(const TimestampQueryType ty
 void AppBase::GPUProfilerTimestamp(const TimestampQueryType type)
 {
 	const std::size_t i = GetTimestampQueryIndex(type);
-
 	mContext->End(mQueries[i].Get());
 }
 
@@ -576,28 +575,10 @@ void AppBase::ShowPerfWindow()
 }
 #endif // IMGUI
 
-// void AppBase::CreateRTVAndDSVDescriptorHeaps()
-// {
-// 	// ImGUI SRV
-// 	{
-// 		D3D12_DESCRIPTOR_HEAP_DESC desc;
-// 		desc.NumDescriptors = 1;
-// 		desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-// 		desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-// 		desc.NodeMask = 0;
-
-// 		ThrowIfFailed(mDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(mSRVHeap.GetAddressOf())));
-// 	}
-// }
-
 void AppBase::OnResize()
 {
 	static UINT prevWidth = 0;
 	static UINT prevHeight = 0;
-
-	// ImGui_ImplDX12_InvalidateDeviceObjects();
-
-	// ImGui_ImplDX12_CreateDeviceObjects();
 
 	if ((mWindowWidth == 0) || (mWindowHeight == 0) || ((mWindowWidth == prevWidth) && (mWindowHeight == prevHeight)))
 	{
@@ -717,7 +698,9 @@ void AppBase::OnResize()
 		NameResource(pGBuffer.Get(), "GBuffer");
 
 		mGBufferRTV.Reset();
-		ThrowIfFailed(mDevice->CreateRenderTargetView(pGBuffer.Get(), nullptr, &mGBufferRTV));
+		ThrowIfFailed(mDevice->CreateRenderTargetView(pGBuffer.Get(),
+													  nullptr,
+													  &mGBufferRTV));
 
 		NameResource(mGBufferRTV.Get(), "GBufferRTV");
 
@@ -727,6 +710,43 @@ void AppBase::OnResize()
 														&mGBufferSRV));
 
 		NameResource(mGBufferSRV.Get(), "GBufferSRV");
+	}
+
+	// shadows resolve RTV and SRV
+	{
+		D3D11_TEXTURE2D_DESC desc;
+		desc.Width = mWindowWidth;
+		desc.Height = mWindowHeight;
+		desc.MipLevels = 1;
+		desc.ArraySize = 1;
+		desc.Format = DXGI_FORMAT_R8_UNORM;
+		desc.SampleDesc.Count = 1;
+		desc.SampleDesc.Quality = 0;
+		desc.Usage = D3D11_USAGE_DEFAULT;
+		desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+		desc.CPUAccessFlags = 0;
+		desc.MiscFlags = 0;
+
+		ComPtr<ID3D11Texture2D> pShadowsResolve;
+		ThrowIfFailed(mDevice->CreateTexture2D(&desc,
+											   nullptr,
+											   &pShadowsResolve));
+
+		NameResource(pShadowsResolve.Get(), "ShadowsResolve");
+
+		mShadowsResolveRTV.Reset();
+		ThrowIfFailed(mDevice->CreateRenderTargetView(pShadowsResolve.Get(),
+													  nullptr,
+													  &mShadowsResolveRTV));
+
+		NameResource(mShadowsResolveRTV.Get(), "ShadowsResolveRTV");
+
+		mShadowsResolveSRV.Reset();
+		ThrowIfFailed(mDevice->CreateShaderResourceView(pShadowsResolve.Get(),
+														nullptr,
+														&mShadowsResolveSRV));
+
+		NameResource(mShadowsResolveSRV.Get(), "ShadowsResolveSRV");
 	}
 
 	// viewport

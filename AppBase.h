@@ -87,6 +87,10 @@ protected:
     // states
     ComPtr<ID3D11DepthStencilState> mDepthEqualDSS;
 
+    // shadows resolve
+    ComPtr<ID3D11RenderTargetView> mShadowsResolveRTV;
+    ComPtr<ID3D11ShaderResourceView> mShadowsResolveSRV;
+
     struct MainPassCB
     {
         //XMFLOAT4X4 view = MathHelper::Identity4x4();
