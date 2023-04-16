@@ -23,6 +23,7 @@ struct Object
     Object()
         : mesh(-1)
         , material(-1)
+        , stencilRef(0)
     {
         XMStoreFloat4x4(&world, XMMatrixIdentity());
         XMStoreFloat4x4(&uvTransform, XMMatrixIdentity());
@@ -35,8 +36,11 @@ struct Object
 
     // raster state
     // depth stencil state
+    
+    ComPtr<ID3D11DepthStencilState> depthStencilState;
+    UINT stencilRef;
+
     // blend state
-    // stencil ref
 };
 
 class ObjectManager

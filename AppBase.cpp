@@ -273,6 +273,9 @@ bool AppBase::InitDirect3D()
 										&mContext));
 
 		assert(featureLevel >= D3D_FEATURE_LEVEL_11_0);
+
+		ThrowIfFailed(mContext->QueryInterface(__uuidof(mUserDefinedAnnotation.Get()),
+											   reinterpret_cast<void**>(mUserDefinedAnnotation.GetAddressOf())));
 	}
 
 	// swap chain
@@ -508,8 +511,6 @@ void AppBase::ShowPerfWindow()
 			{
 				const std::size_t query = GetTimestampGetDataIndex(TimestampQueryType(i));
 
-				// TODO: make this test properly
-
 				while (!mIsCurrGPUNvidia && (mContext->GetData(mQueries[query].Get(), nullptr, 0, 0) == S_FALSE))
 				{
 					Sleep(1);
@@ -638,6 +639,15 @@ void AppBase::OnResize()
 														  &mDepthStencilBufferDSV));
 
 			NameResource(mDepthStencilBufferDSV.Get(), "DepthStencilBufferDSV");
+
+			desc.Flags = D3D11_DSV_READ_ONLY_DEPTH | D3D11_DSV_READ_ONLY_STENCIL;
+			
+			mDepthStencilBufferReadOnlyDSV.Reset();
+			ThrowIfFailed(mDevice->CreateDepthStencilView(pDepthStencilBuffer.Get(),
+														  &desc,
+														  &mDepthStencilBufferReadOnlyDSV));
+
+			NameResource(mDepthStencilBufferReadOnlyDSV.Get(), "DepthStencilBufferReadOnlyDSV");
 		}
 
 		// depth buffer SRV
@@ -655,6 +665,41 @@ void AppBase::OnResize()
 
 			NameResource(mDepthBufferSRV.Get(), "DepthBufferSVR");
 		}
+	}
+
+	// gbuffer
+	{
+		D3D11_TEXTURE2D_DESC desc;
+		desc.Width = mWindowWidth;
+		desc.Height = mWindowHeight;
+		desc.MipLevels = 1;
+		desc.ArraySize = 1;
+		desc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+		desc.SampleDesc.Count = 1;
+		desc.SampleDesc.Quality = 0;
+		desc.Usage = D3D11_USAGE_DEFAULT;
+		desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+		desc.CPUAccessFlags = 0;
+		desc.MiscFlags = 0;
+
+		ComPtr<ID3D11Texture2D> pGBuffer;
+		ThrowIfFailed(mDevice->CreateTexture2D(&desc,
+											   nullptr,
+											   &pGBuffer));
+
+		NameResource(pGBuffer.Get(), "GBuffer");
+
+		mGBufferRTV.Reset();
+		ThrowIfFailed(mDevice->CreateRenderTargetView(pGBuffer.Get(), nullptr, &mGBufferRTV));
+
+		NameResource(mGBufferRTV.Get(), "GBufferRTV");
+
+		mGBufferSRV.Reset();
+		ThrowIfFailed(mDevice->CreateShaderResourceView(pGBuffer.Get(),
+														nullptr,
+														&mGBufferSRV));
+
+		NameResource(mGBufferSRV.Get(), "GBufferSRV");
 	}
 
 	// viewport
@@ -914,6 +959,8 @@ int AppBase::Run()
 				Draw(mTimer);
 
 #if IMGUI
+				mUserDefinedAnnotation->BeginEvent(L"imgui");
+
 				GPUProfilerTimestamp(TimestampQueryType::ImGuiBegin);
 
 				ImGui_ImplDX11_NewFrame();
@@ -926,6 +973,8 @@ int AppBase::Run()
 				ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
 				GPUProfilerTimestamp(TimestampQueryType::ImGuiEnd);
+
+				mUserDefinedAnnotation->EndEvent();
 #endif // IMGUI
 
 				ThrowIfFailed(mSwapChain->Present(0, 0));

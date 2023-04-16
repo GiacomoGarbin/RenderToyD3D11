@@ -59,8 +59,11 @@ protected:
     ComPtr<ID3D11Device> mDevice;
     ComPtr<ID3D11DeviceContext> mContext;
 
+    ComPtr<ID3DUserDefinedAnnotation> mUserDefinedAnnotation;
+
     ComPtr<ID3D11RenderTargetView> mBackBufferRTV;
     ComPtr<ID3D11DepthStencilView> mDepthStencilBufferDSV;
+    ComPtr<ID3D11DepthStencilView> mDepthStencilBufferReadOnlyDSV;
 
     D3D11_VIEWPORT mViewport;
 
@@ -116,6 +119,9 @@ protected:
     Lighting mLighting;
 
     ComPtr<ID3D11ShaderResourceView> mDepthBufferSRV;
+
+    ComPtr<ID3D11RenderTargetView> mGBufferRTV;
+    ComPtr<ID3D11ShaderResourceView> mGBufferSRV;
 
     ComPtr<ID3D11SamplerState> mSamplerLinearWrap;
 
