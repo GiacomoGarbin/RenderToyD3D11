@@ -112,6 +112,12 @@ float4 DefaultImpl(const DefaultVSOut pin, const int materialIndex)
 	float3 normal;
 	GetDiffuseAndNormal(pin, material, diffuse, normal);
 
+#if FAKE_NORMALS
+	const float3 e0 = ddx(pin.world);
+	const float3 e1 = ddy(pin.world);
+	normal = normalize(cross(e0, e1));
+#endif // FAKE_NORMALS
+
 	float3 toEye = gEyePosition - pin.world;
 	const float distToEye = length(toEye);
 	toEye /= distToEye;
@@ -166,6 +172,10 @@ float4 DefaultImpl(const DefaultVSOut pin, const int materialIndex)
 // 	const float FogAmount = saturate((DistToEye - gFogStart) / gFogRange);
 // 	result = lerp(result, gFogColor, FogAmount);
 // #endif // FOG
+
+#if FAKE_NORMALS
+	// result.rgb = normal;
+#endif // FAKE_NORMALS
 
 	result.a = diffuse.a;
 

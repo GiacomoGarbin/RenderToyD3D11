@@ -83,6 +83,7 @@ protected:
     ComPtr<ID3D11PixelShader> mDefaultPS;
     ComPtr<ID3D11VertexShader> mFullscreenVS;
     ComPtr<ID3D11PixelShader> mGBufferPS;
+    ComPtr<ID3D11PixelShader> mGBufferFakeNormalsPS;
 
     // states
     ComPtr<ID3D11DepthStencilState> mDepthEqualDSS;

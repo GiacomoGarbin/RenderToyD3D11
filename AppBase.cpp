@@ -140,6 +140,26 @@ bool AppBase::Init()
 		NameResource(mGBufferPS.Get(), "GBufferPS");
 	}
 
+	// gbuffer fake normals pixel shader
+	{
+		std::wstring path = L"../RenderToyD3D11/shaders/GBuffer.hlsl";
+
+		const D3D_SHADER_MACRO defines[] =
+		{
+			"FAKE_NORMALS", "1",
+			nullptr, nullptr
+		};
+
+		ComPtr<ID3DBlob> pCode = CompileShader(path, defines, "GBufferPS", ShaderTarget::PS);
+
+		ThrowIfFailed(mDevice->CreatePixelShader(pCode->GetBufferPointer(),
+												 pCode->GetBufferSize(),
+												 nullptr,
+												 &mGBufferFakeNormalsPS));
+
+		NameResource(mGBufferFakeNormalsPS.Get(), "GBufferFakeNormalsPS");
+	}
+
 	// depth equal DSS
 	{
 		D3D11_DEPTH_STENCIL_DESC desc;
@@ -1007,21 +1027,28 @@ void AppBase::OnKeyboardEvent(const Timer& timer)
 {
 	const float dt = timer.GetDeltaTime();
 
+	float speed = 10;
+
+	if ((GetAsyncKeyState(VK_LSHIFT) & 0x8000))
+	{
+		speed *= 2;
+	}
+
 	if ((GetAsyncKeyState('W') & 0x8000))
 	{
-		mCamera.Walk(+10.0f * dt);
+		mCamera.Walk(+speed * dt);
 	}
 	if ((GetAsyncKeyState('S') & 0x8000))
 	{
-		mCamera.Walk(-10.0f * dt);
+		mCamera.Walk(-speed * dt);
 	}
 	if ((GetAsyncKeyState('A') & 0x8000))
 	{
-		mCamera.Strafe(-10.0f * dt);
+		mCamera.Strafe(-speed * dt);
 	}
 	if ((GetAsyncKeyState('D') & 0x8000))
 	{
-		mCamera.Strafe(+10.0f * dt);
+		mCamera.Strafe(+speed * dt);
 	}
 }
 

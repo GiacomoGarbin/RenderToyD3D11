@@ -156,6 +156,9 @@ public:
 	}
 
 	static MeshData CreateBox(const float width, const float height, const float depth);
+	static MeshData CreateGrid(const float width, const float depth, const std::size_t m, const std::size_t n);
+
+	static MeshData LoadModel(const std::string& path);
 
 private:
 

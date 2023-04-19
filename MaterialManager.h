@@ -98,6 +98,14 @@ public:
         return mMaterials[i];
     }
 
+    const std::size_t GetMaterial(const std::string& name) const
+    {
+        auto i = mLookup.find(name);
+        assert(i != mLookup.end());
+
+        return i->second;
+    }
+
     const std::vector<Material>& GetMaterials() const
     {
         return mMaterials;
