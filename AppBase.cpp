@@ -146,7 +146,7 @@ bool AppBase::Init()
 
 		const D3D_SHADER_MACRO defines[] =
 		{
-			"FAKE_NORMALS", "1",
+			//"FAKE_NORMALS", "1",
 			nullptr, nullptr
 		};
 

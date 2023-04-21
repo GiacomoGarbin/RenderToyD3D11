@@ -184,13 +184,38 @@ MeshData MeshManager::LoadModel(const std::string& path)
 	{
 		std::istringstream iss(line);
 
-		// skip index
-		//iss >> i;
-		iss >> i >> a >> i >> a >> i >> a;
-
+		
 		VertexData vertex;
+		
+		// skip index
+		iss >> i >> a >> i >> a >> i;
 
-		iss >> vertex.position.x >> a >> vertex.position.y >> a >> vertex.position.z;
+		// position
+		iss >> a >> vertex.position.x >> a >> vertex.position.y >> a >> vertex.position.z;
+
+		// skip blend index
+		iss >> a >> i >> a >> i >> a >> i >> a >> i;
+		
+		// skip blend weight
+		iss >> a >> i >> a >> i >> a >> i >> a >> i;
+
+		// normal
+		iss >> a >> vertex.normal.x >> a >> vertex.normal.y >> a >> vertex.normal.z >> a >> i;
+		XMStoreFloat3(&vertex.normal, XMLoadFloat3(&vertex.normal) / 255.0f);
+		
+		// skip binormal
+		iss >> a >> i >> a >> i >> a >> i >> a >> i;
+
+		// tangent
+		iss >> a >> vertex.tangent.x >> a >> vertex.tangent.y >> a >> vertex.tangent.z >> a >> i;
+		XMStoreFloat3(&vertex.tangent, XMLoadFloat3(&vertex.tangent) / 255.0f);
+
+		// texcoord0
+		iss >> a >> vertex.uv.x >> a >> vertex.uv.y >> a >> i >> a >> i;
+		XMStoreFloat2(&vertex.uv, XMLoadFloat2(&vertex.uv) / 255.0f);
+
+		// texcoord1
+		iss >> a >> i >> a >> i >> a >> i >> a >> i;
 
 		vertices.push_back(vertex);
 	}
