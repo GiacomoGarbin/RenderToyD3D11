@@ -188,7 +188,8 @@ MeshData MeshManager::LoadModel(const std::string& path)
 		VertexData vertex;
 		
 		// skip index
-		iss >> i >> a >> i >> a >> i;
+		iss >> i >> a >> i >> a >> i; // ib
+		//iss >> i >> a; // vb
 
 		// position
 		iss >> a >> vertex.position.x >> a >> vertex.position.y >> a >> vertex.position.z;

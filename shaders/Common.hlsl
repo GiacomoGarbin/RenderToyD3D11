@@ -22,11 +22,11 @@ struct MaterialData
 StructuredBuffer<MaterialData> gMaterialBuffer : register(t0);
 
 Texture2DArray gDiffuseTextures : register(t1);
-// Texture2DArray gNormalTextures : register(t2);
+Texture2DArray gNormalTextures : register(t2);
 
-Texture2D<float> gShadowResolve : register(t2);
+Texture2D<float> gShadowResolve : register(t3);
 #if REFLECTIVE_SURFACE
-Texture2D gReflectionResolve : register(t3);
+Texture2D gReflectionResolve : register(t4);
 #endif // REFLECTIVE_SURFACE
 
 // SamplerState gSamplerPointWrap        : register(s0);
@@ -72,23 +72,30 @@ cbuffer MainPassCB : register(b0)
 	Light gLights[LIGHT_MAX_COUNT];
 };
 
-// float3 NormalSampleToWorldSpace(const float3 NormalSample, const float3 UnitNormalW, const float3 TangentW)
-// {
-// 	// uncompress from [0,1] to [-1,+1]
-// 	const float3 NormalT = 2.0f * NormalSample - 1.0f;
+float3 NormalSampleToWorldSpace(const float4 normalSample, const float3 unitNormalW, const float3 tangentW)
+{
+#if UNPACK_NORMAL
+	// [0,1] -> [-1,+1]
+	float3 normalT;
+	normalT.xy = 2.0f * normalSample.wy - 1.0f;
+	normalT.z = sqrt(abs(1 - dot(normalT.xy, normalT.xy)));
+#else // UNPACK_NORMAL
+	// uncompress from [0,1] to [-1,+1]
+	const float3 normalT = 2.0f * normalSample - 1.0f;
+#endif // UNPACK_NORMAL
 
-// 	// build orthonormal basis
-// 	const float3 N = UnitNormalW;
-// 	const float3 T = normalize(TangentW - dot(TangentW, N) * N);
-// 	const float3 B = cross(N, T);
+	// build orthonormal basis
+	const float3 N = unitNormalW;
+	const float3 T = normalize(tangentW - dot(tangentW, N) * N);
+	const float3 B = cross(N, T);
 
-// 	const float3x3 TBN = float3x3(T, B, N);
+	const float3x3 TBN = float3x3(T, B, N);
 
-// 	// transform from tangent space to world space
-// 	const float3 NormalW = mul(NormalT, TBN);
+	// transform from tangent space to world space
+	const float3 normalW = mul(normalT, TBN);
 
-// 	return NormalW;
-// }
+	return normalW;
+}
 
 // float CalculateShadowFactor(float4 position)
 // {

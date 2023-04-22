@@ -140,13 +140,13 @@ bool AppBase::Init()
 		NameResource(mGBufferPS.Get(), "GBufferPS");
 	}
 
-	// gbuffer fake normals pixel shader
+	// gbuffer unpack normal pixel shader
 	{
 		std::wstring path = L"../RenderToyD3D11/shaders/GBuffer.hlsl";
 
 		const D3D_SHADER_MACRO defines[] =
 		{
-			//"FAKE_NORMALS", "1",
+			"UNPACK_NORMAL", "1",
 			nullptr, nullptr
 		};
 
@@ -155,9 +155,9 @@ bool AppBase::Init()
 		ThrowIfFailed(mDevice->CreatePixelShader(pCode->GetBufferPointer(),
 												 pCode->GetBufferSize(),
 												 nullptr,
-												 &mGBufferFakeNormalsPS));
+												 &mGBufferUnpackNormalPS));
 
-		NameResource(mGBufferFakeNormalsPS.Get(), "GBufferFakeNormalsPS");
+		NameResource(mGBufferUnpackNormalPS.Get(), "GBufferUnpackNormalPS");
 	}
 
 	// depth equal DSS
@@ -527,8 +527,8 @@ void AppBase::ShowPerfWindow()
 	ImGui::Begin("Performance", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
 	ImGui::Text("GPU: %ls", mCurrGPUName.c_str());
-
 	ImGui::Text("Resolution: %dx%d", mWindowWidth, mWindowHeight);
+	ImGui::NewLine();
 
 	const float fps = 1 / mTimer.GetDeltaTime();
 	const float cpuTime = mTimer.GetDeltaTime() * 1000;
@@ -587,7 +587,9 @@ void AppBase::ShowPerfWindow()
 		mCurrGetDataIndex = 0;
 	}
 
-	ImGui::Text("FPS: %6.2f (CPU: %6.2f ms GPU: %6.2f ms)", fps, cpuTime, gpuTime);
+	ImGui::Text("FPS: %6.2f", fps);
+	ImGui::Text("CPU: %6.2f ms", cpuTime);
+	ImGui::Text("GPU: %6.2f ms", gpuTime);
 
 	ImGui::Text("DepthGBufferPrepass:  %6.2f ms \n"
 				"RayTracedShadows:     %6.2f ms \n"
@@ -599,6 +601,12 @@ void AppBase::ShowPerfWindow()
 				gpuTimeRayTracedReflections,
 				gpuTimeMainPass,
 				gpuTimeImGui);
+
+	ImGui::NewLine();
+
+	{
+		ImGui::Checkbox("update lights", &mIsLightUpdateEnabled);
+	}
 
 	ImGui::End();
 }
@@ -1142,7 +1150,10 @@ void AppBase::Update(const Timer& timer)
 
 	mCamera.UpdateViewMatrix();
 
-	mLighting.UpdateLights(timer);
+	if (mIsLightUpdateEnabled)
+	{
+		mLighting.UpdateLights(timer);
+	}
 
 	UpdateMainPassCB(timer);
 

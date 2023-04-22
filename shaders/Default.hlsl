@@ -96,12 +96,15 @@ void GetDiffuseAndNormal(const DefaultVSOut pin,
 	clip(diffuse.a - 0.1f);
 #endif // ALPHA_TEST
 
-#if NORMAL_MAPPING
-	const float4 normalTexel = gNormalTextures.Sample(gSamplerLinearWrap, float3(pin.uv, material.normalTextureIndex));
-	normal = NormalSampleToWorldSpace(normalTexel.rgb, normalize(pin.normal), pin.tangent);
-#else // NORMAL_MAPPING
-	normal = normalize(pin.normal);
-#endif // NORMAL_MAPPING
+	if (material.normalTextureIndex != -1)
+	{
+		const float4 normalTexel = gNormalTextures.Sample(gSamplerLinearWrap, float3(pin.uv, material.normalTextureIndex));
+		normal = NormalSampleToWorldSpace(normalTexel, normalize(pin.normal), pin.tangent);
+	}
+	else
+	{
+		normal = normalize(pin.normal);
+	}
 }
 
 float4 DefaultImpl(const DefaultVSOut pin, const int materialIndex)
@@ -111,6 +114,8 @@ float4 DefaultImpl(const DefaultVSOut pin, const int materialIndex)
 	float4 diffuse;
 	float3 normal;
 	GetDiffuseAndNormal(pin, material, diffuse, normal);
+
+	// return float4(normal, 1);
 
 #if FAKE_NORMALS
 	const float3 e0 = ddx(pin.world);
@@ -159,7 +164,7 @@ float4 DefaultImpl(const DefaultVSOut pin, const int materialIndex)
 	{
 		const float3 r = reflect(-toEye, normal);
 		const float3 fresnel = SchlickFresnel(material.fresnel, normal, r);
-		float4 reflection = 1;
+		float4 reflection = 0;
 #if REFLECTIVE_SURFACE
 		// const float4 reflection = gCubeMap.Sample(gSamplerLinearWrap, r);
 		reflection = gReflectionResolve.Load(uint3(pin.position.xy, 0));
