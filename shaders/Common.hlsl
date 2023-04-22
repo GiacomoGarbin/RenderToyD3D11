@@ -21,8 +21,10 @@ struct MaterialData
 // material buffer, it contains all materials
 StructuredBuffer<MaterialData> gMaterialBuffer : register(t0);
 
-Texture2DArray gDiffuseTextures : register(t1);
-Texture2DArray gNormalTextures : register(t2);
+// Texture2DArray gDiffuseTextures : register(t1);
+// Texture2DArray gNormalTextures : register(t2);
+Texture2D gDiffuseTextures : register(t1);
+Texture2D gNormalTextures : register(t2);
 
 Texture2D<float> gShadowResolve : register(t3);
 #if REFLECTIVE_SURFACE
@@ -53,8 +55,8 @@ cbuffer MainPassCB : register(b0)
 // 	float4x4 gShadowMapTransform;
 	float3 gEyePosition;
 	float padding1;
-// 	float2 gRenderTargetSize;
-// 	float2 gRenderTargetSizeInverse;
+	float2 gResolution;
+	float2 gOneOverResolution;
 // 	float gNearPlane;
 // 	float gFarPlane;
 // 	float gDeltaTime;
@@ -81,7 +83,7 @@ float3 NormalSampleToWorldSpace(const float4 normalSample, const float3 unitNorm
 	normalT.z = sqrt(abs(1 - dot(normalT.xy, normalT.xy)));
 #else // UNPACK_NORMAL
 	// uncompress from [0,1] to [-1,+1]
-	const float3 normalT = 2.0f * normalSample - 1.0f;
+	const float3 normalT = 2.0f * normalSample.xyz - 1.0f;
 #endif // UNPACK_NORMAL
 
 	// build orthonormal basis

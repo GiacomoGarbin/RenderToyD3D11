@@ -15,11 +15,22 @@ cbuffer ObjectCB : register(b1)
 	float3 padding;
 };
 
+#if WATER_NORMAL_MAPPING
+cbuffer WavesCB : register(b2)
+{
+	float4x4 gWavesNormalMapTransform0;
+	float4x4 gWavesNormalMapTransform1;
+};
+
+Texture2D gWavesNormalMap0 : register(t9);
+Texture2D gWavesNormalMap1 : register(t10);
+#endif // WATER_NORMAL_MAPPING
+
 struct DefaultVSIn
 {
 	float3 position : POSITION;
 	float3 normal   : NORMAL;
-	float2 uv       : TEXCOORD;
+	float2 uv       : TEXCOORD0;
 	float3 tangent  : TANGENT;
 };
 
@@ -28,8 +39,13 @@ struct DefaultVSOut
 	float4 position : SV_POSITION;
 	float3 world    : POSITION0;
 	float3 normal   : NORMAL;
-	float2 uv       : TEXCOORD;
+	float2 uv       : TEXCOORD0;
 	float3 tangent  : TANGENT;
+	
+#if WATER_NORMAL_MAPPING
+	float2 wavesNormalMapTexCoord0 : TEXCOORD1;
+	float2 wavesNormalMapTexCoord1 : TEXCOORD2;
+#endif // WATER_NORMAL_MAPPING
 };
 
 DefaultVSOut DefaultVS(DefaultVSIn vin)
@@ -78,6 +94,11 @@ DefaultVSOut DefaultVS(DefaultVSIn vin)
 	// // projective tex-coords to project shadow map onto scene
 	// vout.ShadowPositionH = mul(PositionW, gShadowMapTransform);
 
+#if WATER_NORMAL_MAPPING
+	vout.wavesNormalMapTexCoord0 = mul(gWavesNormalMapTransform0, float4(vin.uv, 0, 1)).xy;
+	vout.wavesNormalMapTexCoord1 = mul(gWavesNormalMapTransform1, float4(vin.uv, 0, 1)).xy;
+#endif // WATER_NORMAL_MAPPING
+
 	return vout;
 }
 
@@ -89,22 +110,36 @@ void GetDiffuseAndNormal(const DefaultVSOut pin,
 	diffuse = material.diffuse;
 	if (material.diffuseTextureIndex != -1)
 	{
-		diffuse *= gDiffuseTextures.Sample(gSamplerLinearWrap, float3(pin.uv, material.diffuseTextureIndex));
+		// diffuse *= gDiffuseTextures.Sample(gSamplerLinearWrap, float3(pin.uv, material.diffuseTextureIndex));
+		diffuse *= gDiffuseTextures.Sample(gSamplerLinearWrap, pin.uv);
 	}
 
 #if ALPHA_TEST
 	clip(diffuse.a - 0.1f);
 #endif // ALPHA_TEST
 
+#if WATER_NORMAL_MAPPING
+	const float3 n = normalize(pin.normal);
+
+	float4 n0 = gWavesNormalMap0.Sample(gSamplerLinearWrap, pin.wavesNormalMapTexCoord0);
+	n0.xyz = NormalSampleToWorldSpace(n0, n, pin.tangent);
+
+	float4 n1 = gWavesNormalMap1.Sample(gSamplerLinearWrap, pin.wavesNormalMapTexCoord1);
+	n1.xyz = NormalSampleToWorldSpace(n1, n, pin.tangent);
+
+	normal = normalize(n0.xyz + n1.xyz);
+#else // WATER_NORMAL_MAPPING
 	if (material.normalTextureIndex != -1)
 	{
-		const float4 normalTexel = gNormalTextures.Sample(gSamplerLinearWrap, float3(pin.uv, material.normalTextureIndex));
+		// const float4 normalTexel = gNormalTextures.Sample(gSamplerLinearWrap, float3(pin.uv, material.normalTextureIndex));
+		const float4 normalTexel = gNormalTextures.Sample(gSamplerLinearWrap, pin.uv);
 		normal = NormalSampleToWorldSpace(normalTexel, normalize(pin.normal), pin.tangent);
 	}
 	else
 	{
 		normal = normalize(pin.normal);
 	}
+#endif // WATER_NORMAL_MAPPING
 }
 
 float4 DefaultImpl(const DefaultVSOut pin, const int materialIndex)
@@ -114,6 +149,10 @@ float4 DefaultImpl(const DefaultVSOut pin, const int materialIndex)
 	float4 diffuse;
 	float3 normal;
 	GetDiffuseAndNormal(pin, material, diffuse, normal);
+	
+// #if WATER_NORMAL_MAPPING
+// 	return float4(normal,1);
+// #endif // WATER_NORMAL_MAPPING
 
 #if FAKE_NORMAL
 	const float3 e0 = ddx(pin.world);
@@ -163,7 +202,19 @@ float4 DefaultImpl(const DefaultVSOut pin, const int materialIndex)
 		float4 reflection = 0;
 #if REFLECTIVE_SURFACE
 		// const float4 reflection = gCubeMap.Sample(gSamplerLinearWrap, r);
+#if WATER_NORMAL_MAPPING
+		const float3 rFlat = reflect(-toEye, float3(0,1,0));
+		float2 perturbation; 
+		perturbation.x = 0.0f;
+		perturbation.y = r.y - rFlat.y;
+
+		float2 uv = pin.position.xy * gOneOverResolution;
+		uv += perturbation * 0.05f;
+
+		reflection = gReflectionResolve.Sample(gSamplerLinearWrap, uv);
+#else // WATER_NORMAL_MAPPING
 		reflection = gReflectionResolve.Load(uint3(pin.position.xy, 0));
+#endif // WATER_NORMAL_MAPPING
 		reflection.rgb = lerp(1, reflection.rgb, reflection.a);
 #endif // REFLECTIVE_SURFACE
 		result.rgb += shininess * fresnel * reflection.rgb;

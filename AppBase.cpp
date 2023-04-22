@@ -549,7 +549,7 @@ void AppBase::ShowPerfWindow()
 
 	ImGui::Text("GPU: %ls", mCurrGPUName.c_str());
 	ImGui::Text("Resolution: %dx%d", mWindowWidth, mWindowHeight);
-	ImGui::NewLine();
+	//ImGui::NewLine();
 
 	const float fps = 1 / mTimer.GetDeltaTime();
 	const float cpuTime = mTimer.GetDeltaTime() * 1000;
@@ -612,22 +612,25 @@ void AppBase::ShowPerfWindow()
 	ImGui::Text("CPU: %6.2f ms", cpuTime);
 	ImGui::Text("GPU: %6.2f ms", gpuTime);
 
-	ImGui::Text("DepthGBufferPrepass:  %6.2f ms \n"
-				"RayTracedShadows:     %6.2f ms \n"
-				"RayTracedReflections: %6.2f ms \n"
-				"MainPass:             %6.2f ms \n"
-				"ImGui:                %6.2f ms \n",
-				gpuTimeDepthGBufferPrepass,
-				gpuTimeRayTracedShadows,
-				gpuTimeRayTracedReflections,
-				gpuTimeMainPass,
-				gpuTimeImGui);
+	ImGui::Text
+	(
+		//"DepthGBufferPrepass:  %6.2f ms \n"
+		"RayTracedShadows:     %6.2f ms \n"
+		"RayTracedReflections: %6.2f ms \n"
+		//"MainPass:             %6.2f ms \n"
+		//"ImGui:                %6.2f ms \n"
+		//, gpuTimeDepthGBufferPrepass
+		, gpuTimeRayTracedShadows
+		, gpuTimeRayTracedReflections
+		//, gpuTimeMainPass
+		//, gpuTimeImGui
+	);
 
-	ImGui::NewLine();
+	//ImGui::NewLine();
 
-	{
-		ImGui::Checkbox("update lights", &mIsLightUpdateEnabled);
-	}
+	//{
+	//	ImGui::Checkbox("update lights", &mIsLightUpdateEnabled);
+	//}
 
 	ImGui::End();
 }
@@ -1152,6 +1155,9 @@ void AppBase::UpdateMainPassCB(const Timer& timer)
 	buffer.viewProj = mCamera.GetViewProjF();
 	buffer.viewProjInv = mCamera.GetViewProjInvF();
 	buffer.eyePosition = mCamera.GetPositionF();
+
+	buffer.resolution = XMFLOAT2(mWindowWidth, mWindowHeight);
+	buffer.oneOverResolution = { 1.0f / mWindowWidth, 1.0f / mWindowHeight };
 
 	buffer.ambientLight = { 0.25f, 0.25f, 0.35f, 1.0f };
 

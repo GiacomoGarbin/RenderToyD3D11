@@ -35,6 +35,7 @@ struct Object
     XMFLOAT4X4  uvTransform;
 
     // state overrides
+    ComPtr<ID3D11VertexShader> vertexShader;
     ComPtr<ID3D11PixelShader> pixelShader;
     ComPtr<ID3D11DepthStencilState> depthStencilState;
     UINT stencilRef;
@@ -43,6 +44,20 @@ struct Object
 class ObjectManager
 {
 public:
+
+    struct ObjectCB
+    {
+        ObjectCB()
+        {
+            XMStoreFloat4x4(&world, XMMatrixIdentity());
+            XMStoreFloat4x4(&uvTransform, XMMatrixIdentity());
+        }
+
+        XMFLOAT4X4 world;
+        XMFLOAT4X4 uvTransform;
+        UINT material = -1;
+        XMFLOAT3 padding;
+    };
 
     void Init(const ComPtr<ID3D11Device>& pDevice,
               const ComPtr<ID3D11DeviceContext>& pContext)
@@ -101,20 +116,6 @@ public:
 private:
 
     std::vector<Object> mObjects;
-
-    struct ObjectCB
-    {
-        ObjectCB()
-        {
-            XMStoreFloat4x4(&world, XMMatrixIdentity());
-            XMStoreFloat4x4(&uvTransform, XMMatrixIdentity());
-        }
-
-        XMFLOAT4X4 world;
-        XMFLOAT4X4 uvTransform;
-        UINT material = -1;
-        XMFLOAT3 padding;
-    };
 
     static_assert((sizeof(ObjectCB) % 16) == 0, "constant buffer size must be 16-byte aligned");
 

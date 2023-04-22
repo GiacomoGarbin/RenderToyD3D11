@@ -107,8 +107,8 @@ protected:
 //        XMFLOAT4X4 ShadowTransform = MathHelper::Identity4x4();
         XMFLOAT3 eyePosition = { 0.0f, 0.0f, 0.0f };
         float padding1;
-//        XMFLOAT2 RenderTargetSize = { 0.0f, 0.0f };
-//        XMFLOAT2 RenderTargetSizeInverse = { 0.0f, 0.0f };
+        XMFLOAT2 resolution = { 0.0f, 0.0f };
+        XMFLOAT2 oneOverResolution = { 0.0f, 0.0f };
 //        float NearPlane = 0.0f;
 //        float FarPlane = 0.0f;
 //        float DeltaTime = 0.0f;
