@@ -115,13 +115,11 @@ float4 DefaultImpl(const DefaultVSOut pin, const int materialIndex)
 	float3 normal;
 	GetDiffuseAndNormal(pin, material, diffuse, normal);
 
-	// return float4(normal, 1);
-
-#if FAKE_NORMALS
+#if FAKE_NORMAL
 	const float3 e0 = ddx(pin.world);
 	const float3 e1 = ddy(pin.world);
 	normal = normalize(cross(e0, e1));
-#endif // FAKE_NORMALS
+#endif // FAKE_NORMAL
 
 	float3 toEye = gEyePosition - pin.world;
 	const float distToEye = length(toEye);
@@ -146,13 +144,11 @@ float4 DefaultImpl(const DefaultVSOut pin, const int materialIndex)
 	const Material lightMaterial = { diffuse, material.fresnel, shininess };
 
 	float3 shadow = 1.0f;
-#if 1 // SHADOW || 1
+#if SHADOW_MAPPING
     // only the first light casts a shadow
 	shadow[0] = gShadowResolve.Load(uint3(pin.position.xy, 0));
 	// shadow[0] = CalculateShadowFactor(pin.ShadowPositionH);
-#endif // SHADOW
-
-	// return float4(shadow[0], shadow[0], shadow[0], 1);
+#endif // SHADOW_MAPPING
 
 	const float4 direct = ComputeLighting(gLights, lightMaterial, pin.world, normal, toEye, shadow);
 	

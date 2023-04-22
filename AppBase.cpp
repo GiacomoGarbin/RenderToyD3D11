@@ -69,7 +69,10 @@ bool AppBase::Init()
 	{
 		std::wstring path = L"../RenderToyD3D11/shaders/Default.hlsl";
 
-		ComPtr<ID3DBlob> pCode = CompileShader(path, nullptr, "DefaultVS", ShaderTarget::VS);
+		ComPtr<ID3DBlob> pCode = CompileShader(path,
+											   nullptr,
+											   "DefaultVS",
+											   ShaderTarget::VS);
 
 		ThrowIfFailed(mDevice->CreateVertexShader(pCode->GetBufferPointer(),
 												  pCode->GetBufferSize(),
@@ -102,7 +105,16 @@ bool AppBase::Init()
 	{
 		std::wstring path = L"../RenderToyD3D11/shaders/Default.hlsl";
 
-		ComPtr<ID3DBlob> pCode = CompileShader(path, nullptr, "DefaultPS", ShaderTarget::PS);
+		const D3D_SHADER_MACRO defines[] =
+		{
+			"SHADOW_MAPPING", "1",
+			nullptr, nullptr
+		};
+
+		ComPtr<ID3DBlob> pCode = CompileShader(path,
+											   defines,
+											   "DefaultPS",
+											   ShaderTarget::PS);
 
 		ThrowIfFailed(mDevice->CreatePixelShader(pCode->GetBufferPointer(),
 												 pCode->GetBufferSize(),
@@ -116,7 +128,10 @@ bool AppBase::Init()
 	{
 		std::wstring path = L"../RenderToyD3D11/shaders/Fullscreen.hlsl";
 
-		ComPtr<ID3DBlob> pCode = CompileShader(path, nullptr, "FullscreenVS", ShaderTarget::VS);
+		ComPtr<ID3DBlob> pCode = CompileShader(path,
+											   nullptr,
+											   "FullscreenVS",
+											   ShaderTarget::VS);
 
 		ThrowIfFailed(mDevice->CreateVertexShader(pCode->GetBufferPointer(),
 												  pCode->GetBufferSize(),
@@ -130,7 +145,10 @@ bool AppBase::Init()
 	{
 		std::wstring path = L"../RenderToyD3D11/shaders/GBuffer.hlsl";
 
-		ComPtr<ID3DBlob> pCode = CompileShader(path, nullptr, "GBufferPS", ShaderTarget::PS);
+		ComPtr<ID3DBlob> pCode = CompileShader(path,
+											   nullptr,
+											   "GBufferPS",
+											   ShaderTarget::PS);
 
 		ThrowIfFailed(mDevice->CreatePixelShader(pCode->GetBufferPointer(),
 												 pCode->GetBufferSize(),
@@ -150,7 +168,10 @@ bool AppBase::Init()
 			nullptr, nullptr
 		};
 
-		ComPtr<ID3DBlob> pCode = CompileShader(path, defines, "GBufferPS", ShaderTarget::PS);
+		ComPtr<ID3DBlob> pCode = CompileShader(path,
+											   defines,
+											   "GBufferPS",
+											   ShaderTarget::PS);
 
 		ThrowIfFailed(mDevice->CreatePixelShader(pCode->GetBufferPointer(),
 												 pCode->GetBufferSize(),
